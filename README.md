@@ -83,4 +83,4 @@ automatic. This is a single-server app, not a multi-instance service.
 
 ## Contributor guidance
 
-C# contributor instructions: [csharp.instructions.md](.github/instructions/csharp.instructions.md).
+C# code instructions: [csharp-development.instructions.md](.github/instructions/csharp-development.instructions.md).
