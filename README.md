@@ -80,3 +80,7 @@ Override the database location with the `TaskDatabase__Path` environment variabl
 disk and use SQLite-aware backups while the app runs, or stop the app before
 copying its database files. Schema creation and the recurrence migration are
 automatic. This is a single-server app, not a multi-instance service.
+
+## Contributor guidance
+
+C# contributor instructions: [csharp.instructions.md](.github/instructions/csharp.instructions.md).
