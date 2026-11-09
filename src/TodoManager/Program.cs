@@ -7,7 +7,11 @@ builder.Services.AddValidation();
 builder.Services.AddOpenApi();
 builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = false);
 builder.Services.ConfigureHttpJsonOptions(options =>
-    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<TaskPriority>(allowIntegerValues: false)));
+{
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<TaskPriority>(allowIntegerValues: false));
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<TaskRecurrence>(allowIntegerValues: false));
+});
+builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<TaskDatabase>();
 builder.Services.AddScoped<ITaskService, TaskService>();
 

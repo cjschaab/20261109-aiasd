@@ -4,6 +4,22 @@ A responsive todo manager built with ASP.NET Core (.NET 10), SQLite, and plain
 HTML/CSS/JavaScript. Create, edit, complete, reopen, and delete tasks; add notes,
 priorities, and due dates; search, filter, and sort your list.
 
+## Recurring tasks
+
+Choose **Daily**, **Weekly**, or **Monthly** in the Repeat field when adding or
+editing a task. On completion, the task stays in history and a new incomplete task
+is created with the same title, notes, priority, and recurrence. Its due date is
+one day, seven days, or one calendar month after the completion date, using the
+server's local timezone, regardless of the previous due date. An initial due date
+is optional. Monthly dates clamp to the last valid day of the next month.
+
+Each occurrence generates at most one successor, even if completion is retried
+or the task is reopened and completed again. Deleting a task does not delete its
+successor. To stop repeating, set the active occurrence's Repeat field to
+**Does not repeat**. No tasks are generated in the background.
+Existing databases are automatically upgraded on startup; existing tasks keep
+their data and default to no recurrence.
+
 ## Run
 
 Install the .NET 10 SDK, then from the repository root:
@@ -50,7 +66,9 @@ validation, persistence across host restarts, static assets, and OpenAPI.
 | DELETE | `/api/tasks/{id}` | Delete; returns 204 |
 
 Titles are required (maximum 200 characters); notes allow 2,000 characters.
-Priority is `Low`, `Medium` (default), or `High`. `dueDate` is an optional
+Priority is `Low`, `Medium` (default), or `High`.
+`recurrence` is `None` (default), `Daily`, `Weekly`, or `Monthly`.
+`dueDate` is an optional
 `YYYY-MM-DD` calendar date, intentionally not a timezone-dependent timestamp.
 `createdAt` is a UTC timestamp. Overdue means an incomplete task due before the
 browser's current calendar date.
@@ -60,5 +78,5 @@ Example requests: [TodoManager.http](src/TodoManager/TodoManager.http).
 Override the database location with the `TaskDatabase__Path` environment variable
 (use an absolute path outside the public web root). Keep the database on local
 disk and use SQLite-aware backups while the app runs, or stop the app before
-copying its database files. Schema creation is automatic; future schema changes
-will require migrations. This is a single-server app, not a multi-instance service.
+copying its database files. Schema creation and the recurrence migration are
+automatic. This is a single-server app, not a multi-instance service.

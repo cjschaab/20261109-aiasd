@@ -41,3 +41,27 @@ POST {{baseUrl}}/api/tasks
 Content-Type: application/json
 
 { "title": "   " }
+
+### Create a recurring task (due date is optional)
+POST {{baseUrl}}/api/tasks
+Content-Type: application/json
+
+{
+  "title": "Weekly review",
+  "notes": "Review progress and plan next steps",
+  "priority": "Medium",
+  "recurrence": "Weekly"
+}
+
+### Complete a recurring occurrence (replace ID with the returned ID)
+# Creates the next occurrence due seven days after completion, in server time.
+PUT {{baseUrl}}/api/tasks/2
+Content-Type: application/json
+
+{
+  "title": "Weekly review",
+  "notes": "Review progress and plan next steps",
+  "priority": "Medium",
+  "recurrence": "Weekly",
+  "isCompleted": true
+}

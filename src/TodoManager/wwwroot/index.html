@@ -82,6 +82,14 @@
               <input id="due-date" name="dueDate" type="date" min="0001-01-01" max="9999-12-31">
             </div>
           </div>
+          <label for="recurrence">Repeat</label>
+          <select id="recurrence" name="recurrence" aria-describedby="recurrence-help">
+            <option value="None">Does not repeat</option>
+            <option value="Daily">Daily</option>
+            <option value="Weekly">Weekly</option>
+            <option value="Monthly">Monthly</option>
+          </select>
+          <p id="recurrence-help">Completing a repeating task creates the next one, due one interval after completion (server time).</p>
           <button type="submit" class="primary" id="save">+ Add task</button>
           <button type="button" id="cancel" class="cancel" hidden>Cancel editing</button>
         </form>

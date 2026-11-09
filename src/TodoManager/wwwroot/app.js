@@ -82,6 +82,8 @@ function taskCard(task) {
       method: "PUT", body: JSON.stringify(payload(task, { isCompleted: !task.isCompleted })),
     });
     tasks = tasks.map((item) => item.id === task.id ? updated : item);
+    if (updated.isCompleted && updated.recurrence !== "None")
+      tasks = await request();
     announce(updated.isCompleted ? "Task completed." : "Task reopened.");
   }));
   const content = element("div", "task-content");
@@ -89,6 +91,8 @@ function taskCard(task) {
   if (task.notes) content.append(element("p", "task-notes", task.notes));
   const meta = element("div", "task-meta");
   meta.append(element("span", `badge ${task.priority.toLowerCase()}`, `${task.priority} priority`));
+  if (task.recurrence !== "None")
+    meta.append(element("span", "badge", `Repeats ${task.recurrence.toLowerCase()}`));
   if (task.dueDate) {
     const date = new Date(`${task.dueDate}T00:00:00`);
     const formatted = date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
@@ -121,7 +125,7 @@ function taskCard(task) {
 
 function payload(task, changes = {}) {
   return { title: task.title, notes: task.notes, priority: task.priority,
-    dueDate: task.dueDate, isCompleted: task.isCompleted, ...changes };
+    dueDate: task.dueDate, isCompleted: task.isCompleted, recurrence: task.recurrence, ...changes };
 }
 
 function announce(message) {
@@ -154,6 +158,7 @@ function editTask(task) {
   byId("notes").value = task.notes;
   byId("priority").value = task.priority;
   byId("due-date").value = task.dueDate || "";
+  byId("recurrence").value = task.recurrence;
   byId("form-heading").textContent = "Edit task";
   byId("form-eyebrow").textContent = "A CHANGE OF PLAN";
   byId("save").textContent = "Save changes";
@@ -182,6 +187,7 @@ byId("task-form").addEventListener("submit", (event) => {
   const input = {
     title, notes: byId("notes").value.trim(), priority: byId("priority").value,
     dueDate: byId("due-date").value || null, isCompleted: existing?.isCompleted ?? false,
+    recurrence: byId("recurrence").value,
   };
   mutate(async () => {
     const saved = await request(editingId === null ? "" : `/${editingId}`, {

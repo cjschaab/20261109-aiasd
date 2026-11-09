@@ -32,5 +32,32 @@ public sealed class TaskDatabase(IConfiguration configuration, IWebHostEnvironme
             );
             """;
         await command.ExecuteNonQueryAsync();
+
+        using var transaction = connection.BeginTransaction();
+        command.Transaction = transaction;
+        command.CommandText = "PRAGMA table_info(Tasks)";
+        var columns = new HashSet<string>();
+        await using (var reader = await command.ExecuteReaderAsync())
+        {
+            while (await reader.ReadAsync())
+                columns.Add(reader.GetString(1));
+        }
+        if (!columns.Contains("Recurrence"))
+        {
+            command.CommandText = """
+                ALTER TABLE Tasks ADD COLUMN Recurrence TEXT NOT NULL DEFAULT 'None'
+                    CHECK(Recurrence IN ('None', 'Daily', 'Weekly', 'Monthly'));
+                """;
+            await command.ExecuteNonQueryAsync();
+        }
+        if (!columns.Contains("HasGeneratedNext"))
+        {
+            command.CommandText = """
+                ALTER TABLE Tasks ADD COLUMN HasGeneratedNext INTEGER NOT NULL DEFAULT 0
+                    CHECK(HasGeneratedNext IN (0, 1));
+                """;
+            await command.ExecuteNonQueryAsync();
+        }
+        await transaction.CommitAsync();
     }
 }

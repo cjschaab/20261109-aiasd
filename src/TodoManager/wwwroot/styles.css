@@ -65,6 +65,7 @@ textarea { resize: vertical; }
 .primary:hover, .filters button[aria-pressed="true"]:hover { background: #193e35; }
 .cancel { width: 100%; border: 1px solid var(--line); background: white; padding: 9px; margin-top: 10px; font-size: 12px; }
 .storage-note { border-top: 1px solid var(--line); padding-top: 20px; margin: 22px 0 0; color: var(--muted); font-size: 11px; line-height: 1.8; }
+#recurrence-help { color: var(--muted); font-size: 11px; line-height: 1.6; margin: -10px 0 20px; }
 .empty { text-align: center; padding: 46px 20px; border: 1px dashed #cbd6c7; border-radius: 10px; color: var(--muted); }
 .empty-mark { font: 35px Georgia, serif; color: #80967b; }
 .empty h3 { font: 25px Georgia, serif; color: var(--ink); margin: 12px; }
