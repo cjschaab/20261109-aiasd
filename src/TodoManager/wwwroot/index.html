@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#264e45">
+  <title>Daybook | Todo Manager</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <main class="shell">
+    <header class="masthead">
+      <a class="brand" href="/">daybook<span class="brand-dot">.</span></a>
+      <span class="shared-label">YOUR SHARED WORKSPACE</span>
+    </header>
+    <section class="intro">
+      <p class="eyebrow">A LITTLE STRUCTURE. A LITTLE MORE SPACE.</p>
+      <h1>Make room for<br>what matters.</h1>
+      <p class="subtitle">One place for your plans, big and small. Take it one task at a time.</p>
+    </section>
+    <section class="stats" aria-label="Task summary">
+      <div><strong id="active-count">0</strong><span>TO DO</span></div>
+      <div><strong id="completed-count">0</strong><span>COMPLETED</span></div>
+      <div><strong id="overdue-count">0</strong><span>OVERDUE</span></div>
+      <p>Small steps.<br><em>Real progress.</em></p>
+    </section>
+    <div id="error" class="error" role="alert" hidden></div>
+    <p id="announcement" class="sr-only" role="status" aria-live="polite"></p>
+    <div class="workspace">
+      <section class="task-panel" aria-labelledby="task-heading">
+        <div class="section-heading">
+          <h2 id="task-heading">Your tasks <span id="visible-count" class="count">0</span></h2>
+          <button id="refresh" class="text-button" type="button">Refresh</button>
+        </div>
+        <div class="toolbar">
+          <div class="filters" role="group" aria-label="Filter tasks">
+            <button type="button" data-filter="all" aria-pressed="true">All tasks</button>
+            <button type="button" data-filter="active" aria-pressed="false">To do</button>
+            <button type="button" data-filter="completed" aria-pressed="false">Completed</button>
+          </div>
+          <label class="sr-only" for="search">Search titles and notes</label>
+          <input id="search" type="search" placeholder="Search tasks..." maxlength="200">
+        </div>
+        <div class="sort-row">
+          <span id="list-caption">Everything, in one place.</span>
+          <label for="sort">Sort by
+            <select id="sort">
+              <option value="newest">Newest first</option>
+              <option value="due">Due date</option>
+              <option value="priority">Priority</option>
+            </select>
+          </label>
+        </div>
+        <p id="loading" role="status">Loading your tasks...</p>
+        <ul id="tasks" class="task-list" aria-label="Tasks"></ul>
+        <div id="empty" class="empty" hidden>
+          <span class="empty-mark" aria-hidden="true">+</span>
+          <h3 id="empty-title">A fresh start.</h3>
+          <p id="empty-message">Add your first task and make a little progress today.</p>
+        </div>
+      </section>
+      <aside class="editor" aria-labelledby="form-heading">
+        <p class="eyebrow" id="form-eyebrow">START SOMETHING</p>
+        <h2 id="form-heading">Add a task</h2>
+        <form id="task-form">
+          <label for="title">What needs doing?</label>
+          <input id="title" name="title" placeholder="Give your task a name" required maxlength="200">
+          <label for="notes">Notes <span class="optional">(optional)</span></label>
+          <textarea id="notes" name="notes" rows="4" maxlength="2000" placeholder="A few details, a helpful reminder..."></textarea>
+          <div class="form-pair">
+            <div>
+              <label for="priority">Priority</label>
+              <select id="priority" name="priority">
+                <option value="Low">Low</option>
+                <option value="Medium" selected>Medium</option>
+                <option value="High">High</option>
+              </select>
+            </div>
+            <div>
+              <label for="due-date">Due date</label>
+              <input id="due-date" name="dueDate" type="date" min="0001-01-01" max="9999-12-31">
+            </div>
+          </div>
+          <button type="submit" class="primary" id="save">+ Add task</button>
+          <button type="button" id="cancel" class="cancel" hidden>Cancel editing</button>
+        </form>
+        <p class="storage-note">Saved on your server.<br>One shared list, wherever you open it.</p>
+      </aside>
+    </div>
+    <footer><span>A calmer way to get things done.</span><span>DAYBOOK / TODO MANAGER</span></footer>
+  </main>
+</body>
+</html>

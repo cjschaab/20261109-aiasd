@@ -1,0 +1,43 @@
+@baseUrl = http://localhost:5050
+
+### List tasks
+GET {{baseUrl}}/api/tasks
+
+### Create a task
+POST {{baseUrl}}/api/tasks
+Content-Type: application/json
+
+{
+  "title": "Plan the week",
+  "notes": "Choose three priorities",
+  "priority": "High",
+  "dueDate": "2026-11-16",
+  "isCompleted": false
+}
+
+### Get a task (replace ID with one returned by create)
+GET {{baseUrl}}/api/tasks/1
+
+### Edit and complete a task
+PUT {{baseUrl}}/api/tasks/1
+Content-Type: application/json
+
+{
+  "title": "Plan the week",
+  "notes": "Done",
+  "priority": "High",
+  "dueDate": null,
+  "isCompleted": true
+}
+
+### Delete a task
+DELETE {{baseUrl}}/api/tasks/1
+
+### Missing task
+GET {{baseUrl}}/api/tasks/0
+
+### Invalid title
+POST {{baseUrl}}/api/tasks
+Content-Type: application/json
+
+{ "title": "   " }
