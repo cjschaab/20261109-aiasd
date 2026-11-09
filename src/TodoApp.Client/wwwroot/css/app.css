@@ -1,0 +1,39 @@
+body { font-family: system-ui, sans-serif; background: #f3f4f6; margin: 0; }
+main { max-width: 520px; margin: 40px auto; background: #fff; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+h1 { margin-top: 0; }
+form { display: flex; gap: 8px; }
+form.add { flex-direction: column; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.row > input:not([type=date]) { flex: 1; }
+input, select, textarea { padding: 8px; font-size: 1rem; font-family: inherit; box-sizing: border-box; }
+input[type=text], input:not([type]), textarea { width: 100%; }
+.row > input:not([type=date]) { width: auto; }
+label { display: flex; align-items: center; gap: 6px; color: #555; font-size: .9rem; }
+button { cursor: pointer; padding: 6px 12px; border: 1px solid #ccc; border-radius: 4px; background: #fafafa; }
+button:disabled { cursor: default; opacity: .5; }
+button.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+nav { margin: 16px 0; display: flex; gap: 6px; }
+ul { list-style: none; padding: 0; margin: 0; }
+li { padding: 10px 10px 10px 12px; margin-bottom: 8px; border: 1px solid #eee; border-left: 5px solid #9ca3af; border-radius: 4px; }
+li.priority-high { border-left-color: #dc2626; background: #fef2f2; }
+li.priority-medium { border-left-color: #f59e0b; background: #fffbeb; }
+li.priority-low { border-left-color: #16a34a; background: #f0fdf4; }
+.item { display: flex; align-items: flex-start; gap: 8px; }
+.item .body { flex: 1; min-width: 0; }
+.title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.text { word-break: break-word; }
+li.done .text { text-decoration: line-through; color: #888; }
+li.done { opacity: .7; }
+.badge { font-size: .75rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; color: #fff; }
+.badge-high { background: #dc2626; }
+.badge-medium { background: #f59e0b; }
+.badge-low { background: #16a34a; }
+.due { font-size: .8rem; color: #555; }
+.due.overdue { color: #b91c1c; font-weight: 600; }
+.notes { margin-top: 4px; font-size: .9rem; color: #555; white-space: pre-wrap; word-break: break-word; }
+.edit-panel { display: flex; flex-direction: column; gap: 8px; }
+footer { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; color: #555; }
+.error { color: #b91c1c; }
+
+#blazor-error-ui { background: lightyellow; bottom: 0; box-shadow: 0 -1px 2px rgba(0,0,0,.2); display: none; left: 0; padding: .6rem 1.25rem; position: fixed; width: 100%; z-index: 1000; }
+#blazor-error-ui .dismiss { cursor: pointer; position: absolute; right: .75rem; top: .5rem; }

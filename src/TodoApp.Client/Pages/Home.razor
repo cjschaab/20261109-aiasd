@@ -1,0 +1,206 @@
+@page "/"
+@using System.Net.Http.Json
+@inject HttpClient Http
+
+<PageTitle>Todo List Manager</PageTitle>
+
+<main>
+    <h1>Todo List Manager</h1>
+
+    @if (error is not null)
+    {
+        <p class="error">@error</p>
+    }
+
+    <form class="add" @onsubmit="AddAsync">
+        <div class="row">
+            <input @bind="newText" @bind:event="oninput" placeholder="What needs to be done?" autocomplete="off" />
+            <button type="submit" disabled="@string.IsNullOrWhiteSpace(newText)">Add</button>
+        </div>
+        <div class="row">
+            <label>Priority
+                <select @bind="newPriority">
+                    @foreach (var p in Priorities)
+                    {
+                        <option value="@p">@p</option>
+                    }
+                </select>
+            </label>
+            <label>Due
+                <input type="date" @bind="newDue" />
+            </label>
+        </div>
+        <textarea @bind="newNotes" placeholder="Notes (optional)" rows="2"></textarea>
+    </form>
+
+    <nav>
+        @foreach (var f in Enum.GetValues<Filter>())
+        {
+            var current = f;
+            <button class="@(filter == current ? "active" : "")" @onclick="() => filter = current">@current</button>
+        }
+    </nav>
+
+    @if (todos is null)
+    {
+        <p>Loading...</p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var t in Visible)
+            {
+                <li class="@($"priority-{t.Priority.ToLowerInvariant()} {(t.Done ? "done" : "")}")" @key="t.Id">
+                    @if (editingId == t.Id)
+                    {
+                        <div class="edit-panel">
+                            <input @bind="editText" placeholder="Task" />
+                            <div class="row">
+                                <label>Priority
+                                    <select @bind="editPriority">
+                                        @foreach (var p in Priorities)
+                                        {
+                                            <option value="@p">@p</option>
+                                        }
+                                    </select>
+                                </label>
+                                <label>Due
+                                    <input type="date" @bind="editDue" />
+                                </label>
+                            </div>
+                            <textarea @bind="editNotes" placeholder="Notes" rows="3"></textarea>
+                            <div class="row">
+                                <button @onclick="() => SaveEditAsync(t)">Save</button>
+                                <button @onclick="() => editingId = null">Cancel</button>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="item">
+                            <input type="checkbox" checked="@t.Done" @onchange="e => ToggleAsync(t, (bool)e.Value!)" />
+                            <div class="body">
+                                <div class="title">
+                                    <span class="text" @ondblclick="() => StartEdit(t)">@t.Text</span>
+                                    <span class="badge @($"badge-{t.Priority.ToLowerInvariant()}")">@t.Priority</span>
+                                    @if (t.DueDate is { } due)
+                                    {
+                                        <span class="due @(IsOverdue(t) ? "overdue" : "")">Due @due.ToString("MMM d, yyyy")</span>
+                                    }
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(t.Notes))
+                                {
+                                    <div class="notes">@t.Notes</div>
+                                }
+                            </div>
+                            <button @onclick="() => StartEdit(t)">Edit</button>
+                            <button @onclick="() => DeleteAsync(t)">Delete</button>
+                        </div>
+                    }
+                </li>
+            }
+        </ul>
+        <footer>
+            <span>@Left item@(Left == 1 ? "" : "s") left</span>
+            <button @onclick="ClearCompletedAsync">Clear completed</button>
+        </footer>
+    }
+</main>
+
+@code {
+    enum Filter { All, Active, Completed }
+
+    static readonly string[] Priorities = ["Low", "Medium", "High"];
+
+    List<Todo>? todos;
+    Filter filter = Filter.All;
+    string newText = "";
+    string newPriority = "Medium";
+    DateTime? newDue;
+    string newNotes = "";
+    string editText = "";
+    string editPriority = "Medium";
+    DateTime? editDue;
+    string editNotes = "";
+    long? editingId;
+    string? error;
+
+    IEnumerable<Todo> Visible => todos!.Where(t => filter switch
+    {
+        Filter.Active => !t.Done,
+        Filter.Completed => t.Done,
+        _ => true
+    });
+
+    int Left => todos!.Count(t => !t.Done);
+
+    static bool IsOverdue(Todo t) => !t.Done && t.DueDate is { } d && d < DateOnly.FromDateTime(DateTime.Today);
+
+    static string DateString(DateTime? d) => d?.ToString("yyyy-MM-dd") ?? "";
+
+    protected override Task OnInitializedAsync() => RunAsync(() => Task.CompletedTask);
+
+    async Task RunAsync(Func<Task> action)
+    {
+        try
+        {
+            error = null;
+            await action();
+            todos = await Http.GetFromJsonAsync<List<Todo>>("api/todos") ?? [];
+        }
+        catch (HttpRequestException)
+        {
+            error = "Could not reach the server.";
+            todos ??= [];
+        }
+    }
+
+    Task AddAsync()
+    {
+        var text = newText.Trim();
+        if (text.Length == 0) return Task.CompletedTask;
+        var body = new { text, priority = newPriority, dueDate = DateString(newDue), notes = newNotes };
+        newText = "";
+        newNotes = "";
+        newDue = null;
+        newPriority = "Medium";
+        return RunAsync(async () => (await Http.PostAsJsonAsync("api/todos", body)).EnsureSuccessStatusCode());
+    }
+
+    Task ToggleAsync(Todo t, bool done) =>
+        RunAsync(async () => (await Http.PatchAsJsonAsync($"api/todos/{t.Id}", new { done })).EnsureSuccessStatusCode());
+
+    Task DeleteAsync(Todo t) =>
+        RunAsync(async () => (await Http.DeleteAsync($"api/todos/{t.Id}")).EnsureSuccessStatusCode());
+
+    Task ClearCompletedAsync() =>
+        RunAsync(async () => (await Http.DeleteAsync("api/todos?completed=true")).EnsureSuccessStatusCode());
+
+    void StartEdit(Todo t)
+    {
+        editingId = t.Id;
+        editText = t.Text;
+        editPriority = t.Priority;
+        editDue = t.DueDate?.ToDateTime(TimeOnly.MinValue);
+        editNotes = t.Notes;
+    }
+
+    async Task SaveEditAsync(Todo t)
+    {
+        editingId = null;
+        var text = editText.Trim();
+        if (text.Length == 0) return;
+        var body = new { text, priority = editPriority, dueDate = DateString(editDue), notes = editNotes };
+        await RunAsync(async () => (await Http.PatchAsJsonAsync($"api/todos/{t.Id}", body)).EnsureSuccessStatusCode());
+    }
+
+    public class Todo
+    {
+        public long Id { get; set; }
+        public string Text { get; set; } = "";
+        public bool Done { get; set; }
+        public string Priority { get; set; } = "Medium";
+        public DateOnly? DueDate { get; set; }
+        public string Notes { get; set; } = "";
+    }
+}
