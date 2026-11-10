@@ -4,17 +4,21 @@ model: "unknown/unknown@unknown"
 operator: "jMM-at-CODETraining"
 chat_id: "add-review-solid-20261110"
 prompt: |
-  /skill add
-  skill=review the codebase for SOLID violations, scope=This repository
-started: "2026-11-10T11:52:09.5997879-08:00"
-ended: "2026-11-10T11:52:25.4054404-08:00"
+  update the readme file with the current state of the project
+started: "2026-11-10T12:06:08.0739525-08:00"
+ended: "2026-11-10T12:06:42.3542839-08:00"
 task_durations:
-  - task: "Design repository-local SOLID review workflow"
-    duration: "00:00:15"
-total_duration: "00:00:15"
-ai_log: "ai-logs/2026/11/10/add-review-solid-20261110/conversation.md"
+  - task: "Review implementation and update project README"
+    duration: "00:00:34"
+total_duration: "00:00:34"
+ai_log: "ai-logs/2026/11/10/update-readme-current-state-20261110/conversation.md"
 source: "user"
 revisions:
+  - chat_id: "add-review-solid-20261110"
+    model: "unknown/unknown@unknown"
+    date: "2026-11-10"
+    change: "Document repository-local SOLID review skill."
+    ai_log: "ai-logs/2026/11/10/add-review-solid-20261110/conversation.md"
   - chat_id: "timestamp-review-solid-20261110"
     model: "unknown/unknown@unknown"
     date: "2026-11-10"
@@ -27,6 +31,19 @@ revisions:
 A responsive todo manager built with ASP.NET Core (.NET 10), SQLite, and plain
 HTML/CSS/JavaScript. Create, edit, complete, reopen, and delete tasks; add notes,
 priorities, and due dates; search, filter, and sort your list.
+
+## Current project state
+
+Daybook is a working, single-server task manager. The ASP.NET Core minimal API
+serves both the JSON task API and the browser UI; task data is persisted in one
+SQLite database. The UI provides task counts, search, status filters, sorting,
+editing, and confirmation before deletion. API input is validated and invalid
+requests return Problem Details. Priority and recurrence values use JSON strings.
+
+The app does not currently include authentication, multi-instance storage,
+real-time updates between browsers, or background task scheduling. Changes from
+another browser appear after Refresh. Concurrent edits replace the whole task,
+so the last save wins.
 
 ## Recurring tasks
 
@@ -41,8 +58,9 @@ Each occurrence generates at most one successor, even if completion is retried
 or the task is reopened and completed again. Deleting a task does not delete its
 successor. To stop repeating, set the active occurrence's Repeat field to
 **Does not repeat**. No tasks are generated in the background.
-Existing databases are automatically upgraded on startup; existing tasks keep
-their data and default to no recurrence.
+Existing databases are automatically upgraded on startup to add recurrence and
+successor-tracking fields; existing task data is retained and old tasks default
+to no recurrence.
 
 ## Run
 
@@ -76,8 +94,11 @@ before any public hosting. No Azure resources are required or provisioned.
 dotnet test .\tests\TodoManager.Tests
 ```
 
-Integration tests use isolated temporary SQLite databases and cover CRUD,
-validation, persistence across host restarts, static assets, and OpenAPI.
+Integration tests use isolated temporary SQLite databases. Coverage includes
+CRUD, validation, persistence across host restarts, serving browser assets,
+OpenAPI operations, recurring task dates and month-end clamping, duplicate and
+concurrent completion, transaction rollback when successor creation fails, and
+upgrading a legacy database.
 
 ## API
 
@@ -96,6 +117,9 @@ Priority is `Low`, `Medium` (default), or `High`.
 `YYYY-MM-DD` calendar date, intentionally not a timezone-dependent timestamp.
 `createdAt` is a UTC timestamp. Overdue means an incomplete task due before the
 browser's current calendar date.
+
+Invalid request bodies return `400` Problem Details responses. Unknown task IDs
+return `404`; successful deletion returns `204`.
 
 Development OpenAPI: http://localhost:5050/openapi/v1.json.
 Example requests: [TodoManager.http](src/TodoManager/TodoManager.http).
