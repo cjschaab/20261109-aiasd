@@ -1,3 +1,27 @@
+---
+ai_generated: true
+model: "unknown/unknown@unknown"
+operator: "jMM-at-CODETraining"
+chat_id: "add-review-solid-20261110"
+prompt: |
+  /skill add
+  skill=review the codebase for SOLID violations, scope=This repository
+started: "2026-11-10T11:52:09.5997879-08:00"
+ended: "2026-11-10T11:52:25.4054404-08:00"
+task_durations:
+  - task: "Design repository-local SOLID review workflow"
+    duration: "00:00:15"
+total_duration: "00:00:15"
+ai_log: "ai-logs/2026/11/10/add-review-solid-20261110/conversation.md"
+source: "user"
+revisions:
+  - chat_id: "timestamp-review-solid-20261110"
+    model: "unknown/unknown@unknown"
+    date: "2026-11-10"
+    change: "Document timestamped SOLID review reports."
+    ai_log: "ai-logs/2026/11/10/timestamp-review-solid-20261110/conversation.md"
+---
+
 # Daybook
 
 A responsive todo manager built with ASP.NET Core (.NET 10), SQLite, and plain
@@ -81,7 +105,11 @@ disk and use SQLite-aware backups while the app runs, or stop the app before
 copying its database files. Schema creation and the recurrence migration are
 automatic. This is a single-server app, not a multi-instance service.
 
-## Contributor guidance
+## Review skill
 
-C# code instructions: [csharp-development.instructions.md](.github/instructions/csharp-development.instructions.md).
-Skill authoring instructions: [skill-authoring.instructions.md](.github/instructions/skill-authoring.instructions.md).
+[Review SOLID](.github/skills/review-solid/SKILL.md) provides a read-only,
+evidence-backed review of Single Responsibility, Open/Closed, Liskov Substitution,
+Interface Segregation, and Dependency Inversion. Ask to "review the codebase for
+SOLID violations" to use it. It reports concrete impacts, focused recommendations,
+and validation suggestions without changing application code. Each report includes
+the run's start date and time with its timezone.
