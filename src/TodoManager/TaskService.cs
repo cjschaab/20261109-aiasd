@@ -3,15 +3,45 @@ using Microsoft.Data.Sqlite;
 
 namespace TodoManager;
 
+/// <summary>Provides asynchronous access to persisted tasks.</summary>
 public interface ITaskService
 {
+    /// <summary>Gets all tasks, ordered from newest ID to oldest.</summary>
+    /// <param name="ct">Token used to cancel the database operation.</param>
+    /// <returns>The tasks currently stored in the database.</returns>
     Task<IReadOnlyList<TaskResponse>> GetAllAsync(CancellationToken ct);
+
+    /// <summary>Gets a task by its ID.</summary>
+    /// <param name="id">The task ID to look up.</param>
+    /// <param name="ct">Token used to cancel the database operation.</param>
+    /// <returns>The task, or <see langword="null"/> if no task has that ID.</returns>
     Task<TaskResponse?> GetAsync(long id, CancellationToken ct);
+
+    /// <summary>Creates a task using the supplied fields and the current UTC time as its creation time.</summary>
+    /// <param name="request">The fields for the new task.</param>
+    /// <param name="ct">Token used to cancel the database operation.</param>
+    /// <returns>The newly created task, including its assigned ID and creation time.</returns>
     Task<TaskResponse> CreateAsync(SaveTaskRequest request, CancellationToken ct);
+
+    /// <summary>
+    /// Replaces a task's editable fields. The first transition from incomplete to complete on a
+    /// recurring task creates one next occurrence in the same transaction, dated from the current
+    /// local calendar date.
+    /// </summary>
+    /// <param name="id">The ID of the task to replace.</param>
+    /// <param name="request">The replacement task fields.</param>
+    /// <param name="ct">Token used to cancel the database operation.</param>
+    /// <returns>The updated task, or <see langword="null"/> if no task has that ID.</returns>
     Task<TaskResponse?> UpdateAsync(long id, SaveTaskRequest request, CancellationToken ct);
+
+    /// <summary>Deletes a task by its ID.</summary>
+    /// <param name="id">The ID of the task to delete.</param>
+    /// <param name="ct">Token used to cancel the database operation.</param>
+    /// <returns><see langword="true"/> if a task was deleted; otherwise, <see langword="false"/>.</returns>
     Task<bool> DeleteAsync(long id, CancellationToken ct);
 }
 
+/// <summary>Implements task persistence and recurring-task generation using SQLite.</summary>
 public sealed class TaskService(TaskDatabase database, TimeProvider clock) : ITaskService
 {
     public async Task<IReadOnlyList<TaskResponse>> GetAllAsync(CancellationToken ct)
@@ -45,6 +75,12 @@ public sealed class TaskService(TaskDatabase database, TimeProvider clock) : ITa
         return await InsertAsync(connection, null, request, ct);
     }
 
+    /// <summary>Inserts a task and returns the persisted task, including its generated ID.</summary>
+    /// <param name="connection">The open SQLite connection to use.</param>
+    /// <param name="transaction">The transaction to include the insert in, or <see langword="null"/>.</param>
+    /// <param name="request">The fields to insert.</param>
+    /// <param name="ct">Token used to cancel the database operation.</param>
+    /// <returns>The inserted task.</returns>
     private async Task<TaskResponse> InsertAsync(
         SqliteConnection connection, SqliteTransaction? transaction, SaveTaskRequest request, CancellationToken ct)
     {
@@ -56,9 +92,11 @@ public sealed class TaskService(TaskDatabase database, TimeProvider clock) : ITa
             RETURNING *;
             """;
         AddFields(command, request);
+        // Store creation time as an invariant, round-trip UTC timestamp.
         command.Parameters.AddWithValue("$created", clock.GetUtcNow().ToString("O", CultureInfo.InvariantCulture));
         await using var reader = await command.ExecuteReaderAsync(ct);
         await reader.ReadAsync(ct);
+        // RETURNING includes the database-assigned ID and persisted field values.
         return Read(reader);
     }
 

@@ -66,7 +66,7 @@ function render() {
   byId("empty-message").textContent = tasks.length ? "Try another filter or search, or add a new task." : "Add your first task and make a little progress today.";
   document.querySelectorAll("[data-filter]").forEach((button) =>
     button.setAttribute("aria-pressed", String(button.dataset.filter === filter)));
-  document.querySelectorAll("#tasks button, #tasks input, #refresh, #save, #cancel").forEach((control) => {
+  document.querySelectorAll("#tasks button, #tasks input, #refresh, #task-form input, #task-form textarea, #task-form select, #task-form button").forEach((control) => {
     control.disabled = busy;
   });
 }
@@ -175,7 +175,7 @@ function resetForm() {
   byId("cancel").hidden = true;
 }
 
-byId("task-form").addEventListener("submit", (event) => {
+byId("task-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const title = byId("title").value.trim();
   if (!title) {
@@ -189,7 +189,7 @@ byId("task-form").addEventListener("submit", (event) => {
     dueDate: byId("due-date").value || null, isCompleted: existing?.isCompleted ?? false,
     recurrence: byId("recurrence").value,
   };
-  mutate(async () => {
+  await mutate(async () => {
     const saved = await request(editingId === null ? "" : `/${editingId}`, {
       method: editingId === null ? "POST" : "PUT", body: JSON.stringify(input),
     });
@@ -197,8 +197,8 @@ byId("task-form").addEventListener("submit", (event) => {
     else tasks = tasks.map((task) => task.id === editingId ? saved : task);
     announce(editingId === null ? "Task added." : "Task updated.");
     resetForm();
-    byId("title").focus();
   });
+  if (byId("error").hidden) byId("title").focus();
 });
 byId("cancel").addEventListener("click", resetForm);
 byId("refresh").addEventListener("click", load);
