@@ -203,22 +203,42 @@ public sealed class TaskApiTests : IDisposable
         using var app = CreateApp();
         using var client = app.CreateClient();
         var created = await client.PostAsJsonAsync("/api/tasks", new { title = "No due date", recurrence = "Daily" });
-        var id = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt64();
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var initial = (await created.Content.ReadFromJsonAsync<JsonElement>())!;
+        var id = initial.GetProperty("id").GetInt64();
+        Assert.Equal(JsonValueKind.Null, initial.GetProperty("dueDate").ValueKind);
         var completion = await client.PutAsJsonAsync($"/api/tasks/{id}", new
         {
             title = "Updated", recurrence = "Monthly", isCompleted = true
         });
         Assert.Equal(HttpStatusCode.OK, completion.StatusCode);
+        var updated = (await completion.Content.ReadFromJsonAsync<JsonElement>())!;
+        Assert.True(updated.GetProperty("isCompleted").GetBoolean());
+        Assert.Equal("Updated", updated.GetProperty("title").GetString());
+        Assert.Equal("Monthly", updated.GetProperty("recurrence").GetString());
+        Assert.Equal(JsonValueKind.Null, updated.GetProperty("dueDate").ValueKind);
         var tasks = (await client.GetFromJsonAsync<JsonElement[]>("/api/tasks"))!;
+        Assert.Equal(2, tasks.Length);
+        var original = tasks.Single(task => task.GetProperty("id").GetInt64() == id);
+        Assert.True(original.GetProperty("isCompleted").GetBoolean());
+        Assert.Equal("Monthly", original.GetProperty("recurrence").GetString());
         var next = tasks.Single(task => !task.GetProperty("isCompleted").GetBoolean());
         var nextId = next.GetProperty("id").GetInt64();
         Assert.Equal("Monthly", next.GetProperty("recurrence").GetString());
         Assert.Equal("2028-03-01", next.GetProperty("dueDate").GetString());
         Assert.Equal("Updated", next.GetProperty("title").GetString());
-        Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"/api/tasks/{nextId}", new
+        Assert.Equal(string.Empty, next.GetProperty("notes").GetString());
+        Assert.Equal("Medium", next.GetProperty("priority").GetString());
+        var stopped = await client.PutAsJsonAsync($"/api/tasks/{nextId}", new
         {
             title = "Stop", recurrence = "None", isCompleted = true
-        })).StatusCode);
+        });
+        Assert.Equal(HttpStatusCode.OK, stopped.StatusCode);
+        var stoppedTask = (await stopped.Content.ReadFromJsonAsync<JsonElement>())!;
+        Assert.True(stoppedTask.GetProperty("isCompleted").GetBoolean());
+        Assert.Equal("None", stoppedTask.GetProperty("recurrence").GetString());
+        Assert.Equal("Stop", stoppedTask.GetProperty("title").GetString());
+        Assert.Equal(JsonValueKind.Null, stoppedTask.GetProperty("dueDate").ValueKind);
         Assert.Equal(2, (await client.GetFromJsonAsync<JsonElement[]>("/api/tasks"))!.Length);
     }
 

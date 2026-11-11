@@ -18,6 +18,7 @@ browser-based interface.
   with development OpenAPI documentation.
 - API validation with Problem Details responses, plus content security policy
   and `X-Content-Type-Options: nosniff` response headers.
+- .NET code coverage collection for integration tests using Coverlet.
 
 ### Data and compatibility
 

@@ -112,6 +112,14 @@ OpenAPI operations, recurring task dates and month-end clamping, duplicate and
 concurrent completion, transaction rollback when successor creation fails, and
 upgrading a legacy database.
 
+Collect .NET code coverage in Cobertura format with:
+
+```powershell
+dotnet test .\tests\TodoManager.Tests --collect:"XPlat Code Coverage"
+```
+
+The report is written under `tests\TodoManager.Tests\TestResults`.
+
 Browser tests exercise the rendered UI and its interactions against the real app:
 
 ```powershell

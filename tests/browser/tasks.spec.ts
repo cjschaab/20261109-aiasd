@@ -102,3 +102,110 @@ test("shows an API error and allows the task to be retried", async ({ page }) =>
   await page.getByRole("button", { name: "+ Add task" }).click();
   await expect(page.locator(".task-card")).toContainText("Retry this task");
 });
+
+test("canceling deletion keeps the task", async ({ page }) => {
+  await page.getByLabel("What needs doing?").fill("Keep this task");
+  await page.getByRole("button", { name: "+ Add task" }).click();
+
+  const card = page.locator(".task-card");
+  await expect(card).toHaveCount(1);
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await card.getByRole("button", { name: 'Delete "Keep this task"' }).click();
+
+  await expect(card).toHaveCount(1);
+  await expect(card).toContainText("Keep this task");
+});
+
+test("canceling an edit discards unsaved changes", async ({ page }) => {
+  await page.getByLabel("What needs doing?").fill("Original title");
+  await page.getByLabel("Notes (optional)").fill("Original notes");
+  await page.getByRole("button", { name: "+ Add task" }).click();
+
+  await page.locator(".task-card").getByRole("button", { name: 'Edit "Original title"' }).click();
+  await page.getByLabel("What needs doing?").fill("Changed title");
+  await page.getByLabel("Notes (optional)").fill("Changed notes");
+  await page.getByRole("button", { name: "Cancel editing" }).click();
+
+  await expect(page.locator(".task-card")).toContainText("Original title");
+  await expect(page.locator(".task-card")).toContainText("Original notes");
+  await expect(page.locator(".task-card")).not.toContainText("Changed title");
+  await expect(page.getByRole("heading", { name: "Add a task" })).toBeVisible();
+});
+
+test("rejects a whitespace-only title without sending a request", async ({ page }) => {
+  const posts: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST" && request.url().endsWith("/api/tasks"))
+      posts.push(request.url());
+  });
+
+  await page.getByLabel("What needs doing?").fill("   ");
+  await page.getByRole("button", { name: "+ Add task" }).click();
+
+  await expect(page.getByRole("alert")).toContainText("Please give your task a name.");
+  expect(posts).toHaveLength(0);
+  await expect(page.locator(".task-card")).toHaveCount(0);
+});
+
+test("sorts by due date with tied dates newest first and undated tasks last", async ({ page }) => {
+  const entries = [
+    { title: "No due date" },
+    { title: "Older tied date", dueDate: "2028-02-03" },
+    { title: "Earliest date", dueDate: "2028-02-01" },
+    { title: "Newer tied date", dueDate: "2028-02-03" },
+    { title: "Latest date", dueDate: "2028-02-04" },
+  ];
+
+  for (const [index, entry] of entries.entries()) {
+    await page.getByLabel("What needs doing?").fill(entry.title);
+    if (entry.dueDate)
+      await page.getByLabel("Due date", { exact: true }).fill(entry.dueDate);
+    await page.getByRole("button", { name: "+ Add task" }).click();
+    await expect(page.locator(".task-card")).toHaveCount(index + 1);
+  }
+
+  await page.getByLabel("Sort by").selectOption("due");
+  await expect(page.locator(".task-title")).toHaveText([
+    "Earliest date",
+    "Newer tied date",
+    "Older tied date",
+    "Latest date",
+    "No due date",
+  ]);
+});
+
+test("shows overdue counts and date labels against the browser's local date", async ({ page }) => {
+  await page.clock.install({ time: new Date("2028-02-01T12:00:00") });
+  await page.reload();
+  await expect(page.locator("#loading")).toBeHidden();
+
+  const entries = [
+    { title: "Yesterday", dueDate: "2028-01-31" },
+    { title: "Today", dueDate: "2028-02-01" },
+    { title: "Tomorrow", dueDate: "2028-02-02" },
+    { title: "Completed overdue", dueDate: "2028-01-30" },
+  ];
+  for (const entry of entries) {
+    await page.getByLabel("What needs doing?").fill(entry.title);
+    await page.getByLabel("Due date", { exact: true }).fill(entry.dueDate);
+    await page.getByRole("button", { name: "+ Add task" }).click();
+  }
+
+  await page.getByRole("checkbox", { name: 'Mark "Completed overdue" complete' }).click();
+
+  await expect(page.locator("#overdue-count")).toHaveText("1");
+  const yesterday = page.locator(".task-card").filter({ hasText: "Yesterday" });
+  const today = page.locator(".task-card").filter({ hasText: "Today" });
+  const tomorrow = page.locator(".task-card").filter({ hasText: "Tomorrow" });
+  const completed = page.locator(".task-card").filter({ hasText: "Completed overdue" });
+  await expect(yesterday.locator("time")).toHaveClass(/overdue/);
+  await expect(today.locator("time")).not.toHaveClass(/overdue/);
+  await expect(tomorrow.locator("time")).not.toHaveClass(/overdue/);
+  await expect(completed.locator("time")).not.toHaveClass(/overdue/);
+  await expect(today.locator("time")).toHaveAttribute("datetime", "2028-02-01");
+  const expectedTodayLabel = await page.evaluate(() =>
+    new Date("2028-02-01T00:00:00").toLocaleDateString(undefined, {
+      month: "short", day: "numeric", year: "numeric",
+    }));
+  await expect(today.locator("time")).toContainText(expectedTodayLabel);
+});
