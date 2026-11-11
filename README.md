@@ -35,6 +35,11 @@ revisions:
     date: "2026-11-10"
     change: "Document timestamped SOLID review reports."
     ai_log: "ai-logs/2026/11/10/timestamp-review-solid-20261110/conversation.md"
+  - chat_id: "test-workflow-20261111"
+    model: "unknown/unknown@unknown"
+    date: "2026-11-11"
+    change: "Document automated test checks."
+    ai_log: "ai-logs/2026/11/11/test-workflow-20261111/conversation.md"
 ---
 
 # Daybook
@@ -131,6 +136,12 @@ npm test
 
 The Playwright web server uses an isolated temporary SQLite database. Browser
 tests run serially because they share that test server.
+
+The [Tests workflow](.github/workflows/tests.yml) runs both suites on every
+push and pull request. Push a branch and check the results before opening a PR;
+the checks also run when the PR is updated. The workflow does not prevent
+someone from opening a PR, and blocking merges requires configuring both jobs
+as required status checks in GitHub branch protection or rulesets.
 
 See [Testability Recommendations](src/TodoManager/docs/testability-recommendations.md)
 for prioritized improvements to test seams, deterministic time, assertions, and

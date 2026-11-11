@@ -1,0 +1,43 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  api-tests:
+    name: .NET API tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Run .NET tests
+        run: dotnet test tests/TodoManager.Tests/TodoManager.Tests.csproj --configuration Release
+
+  browser-tests:
+    name: Playwright browser tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/browser/package-lock.json
+      - name: Install browser test dependencies
+        working-directory: tests/browser
+        run: npm ci
+      - name: Install Chromium
+        working-directory: tests/browser
+        run: npx playwright install --with-deps chromium
+      - name: Run browser tests
+        working-directory: tests/browser
+        run: npm test

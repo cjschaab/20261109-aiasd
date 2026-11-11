@@ -39,7 +39,10 @@ public sealed class TaskApiTests : IDisposable
             Assert.Empty((await client.GetFromJsonAsync<JsonElement[]>("/api/tasks"))!);
             var created = await client.PostAsJsonAsync("/api/tasks", new
             {
-                title = "  Plan the week  ", notes = "  First steps  ", priority = "High", dueDate = "2026-11-16"
+                title = "  Plan the week  ",
+                notes = "  First steps  ",
+                priority = "High",
+                dueDate = "2026-11-16"
             });
             Assert.Equal(HttpStatusCode.Created, created.StatusCode);
             var task = await created.Content.ReadFromJsonAsync<JsonElement>();
@@ -58,7 +61,10 @@ public sealed class TaskApiTests : IDisposable
             Assert.Equal("2026-11-16", persisted.GetProperty("dueDate").GetString());
             var updated = await client.PutAsJsonAsync($"/api/tasks/{id}", new
             {
-                title = "Finished planning", notes = "", priority = "Low", isCompleted = true
+                title = "Finished planning",
+                notes = "",
+                priority = "Low",
+                isCompleted = true
             });
             Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
             var task = await updated.Content.ReadFromJsonAsync<JsonElement>();
@@ -107,7 +113,8 @@ public sealed class TaskApiTests : IDisposable
         using var client = app.CreateClient();
         var response = await client.PostAsJsonAsync("/api/tasks", new
         {
-            title = new string('a', titleLength), notes = new string('b', notesLength)
+            title = new string('a', titleLength),
+            notes = new string('b', notesLength)
         });
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -158,8 +165,15 @@ public sealed class TaskApiTests : IDisposable
         using (var app = CreateApp())
         using (var client = app.CreateClient())
         {
-            var input = new { title = "Review", notes = "Keep these", priority = "High",
-                dueDate = "2020-03-20", recurrence, isCompleted = false };
+            var input = new
+            {
+                title = "Review",
+                notes = "Keep these",
+                priority = "High",
+                dueDate = "2020-03-20",
+                recurrence,
+                isCompleted = false
+            };
             var created = await client.PostAsJsonAsync("/api/tasks", input);
             Assert.Equal(HttpStatusCode.Created, created.StatusCode);
             var original = await created.Content.ReadFromJsonAsync<JsonElement>();
@@ -190,7 +204,9 @@ public sealed class TaskApiTests : IDisposable
         {
             var completion = await client.PutAsJsonAsync($"/api/tasks/{id}", new
             {
-                title = "Review", recurrence, isCompleted = true
+                title = "Review",
+                recurrence,
+                isCompleted = true
             });
             Assert.Equal(HttpStatusCode.OK, completion.StatusCode);
             Assert.Equal(2, (await client.GetFromJsonAsync<JsonElement[]>("/api/tasks"))!.Length);
@@ -209,7 +225,9 @@ public sealed class TaskApiTests : IDisposable
         Assert.Equal(JsonValueKind.Null, initial.GetProperty("dueDate").ValueKind);
         var completion = await client.PutAsJsonAsync($"/api/tasks/{id}", new
         {
-            title = "Updated", recurrence = "Monthly", isCompleted = true
+            title = "Updated",
+            recurrence = "Monthly",
+            isCompleted = true
         });
         Assert.Equal(HttpStatusCode.OK, completion.StatusCode);
         var updated = (await completion.Content.ReadFromJsonAsync<JsonElement>())!;
@@ -231,7 +249,9 @@ public sealed class TaskApiTests : IDisposable
         Assert.Equal("Medium", next.GetProperty("priority").GetString());
         var stopped = await client.PutAsJsonAsync($"/api/tasks/{nextId}", new
         {
-            title = "Stop", recurrence = "None", isCompleted = true
+            title = "Stop",
+            recurrence = "None",
+            isCompleted = true
         });
         Assert.Equal(HttpStatusCode.OK, stopped.StatusCode);
         var stoppedTask = (await stopped.Content.ReadFromJsonAsync<JsonElement>())!;
@@ -327,7 +347,9 @@ public sealed class TaskApiTests : IDisposable
         var id = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt64();
         Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"/api/tasks/{id}", new
         {
-            title = "Calendar", recurrence = "Monthly", isCompleted = true
+            title = "Calendar",
+            recurrence = "Monthly",
+            isCompleted = true
         })).StatusCode);
         var next = (await client.GetFromJsonAsync<JsonElement[]>("/api/tasks"))!
             .Single(task => !task.GetProperty("isCompleted").GetBoolean());
