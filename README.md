@@ -157,6 +157,9 @@ disk and use SQLite-aware backups while the app runs, or stop the app before
 copying its database files. Schema creation and the recurrence migration are
 automatic. This is a single-server app, not a multi-instance service.
 
+For setup, project structure, configuration, recurrence behavior, and a detailed
+endpoint and payload reference, see the [Developer Guide](src/TodoManager/docs/developers-guide.md).
+
 ## Review skill
 
 [Review SOLID](.github/skills/review-solid/SKILL.md) provides a read-only,
