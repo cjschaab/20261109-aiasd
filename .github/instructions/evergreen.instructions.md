@@ -1,10 +1,6 @@
 ---
 description: "Use when designing, implementing, refactoring, or testing C#, Razor, or CSS in this repository. Apply durable coding practices that remain maintainable as the project evolves."
-applyTo:
-  - "src/**/*.cs"
-  - "src/**/*.razor"
-  - "src/**/*.css"
-  - "tests/**/*.cs"
+applyTo: "src/**/*.cs, src/**/*.razor, src/**/*.css, tests/**/*.cs"
 ---
 
 # Evergreen Coding Practices
