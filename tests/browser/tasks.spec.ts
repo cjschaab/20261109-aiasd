@@ -103,6 +103,65 @@ test("shows an API error and allows the task to be retried", async ({ page }) =>
   await expect(page.locator(".task-card")).toContainText("Retry this task");
 });
 
+for (const outcome of ["success", "failure"] as const) {
+  test(`locks the form during a pending save and unlocks after ${outcome}`, async ({ page }) => {
+    let releaseSave = () => {};
+    const pendingSave = new Promise<void>((resolve) => { releaseSave = resolve; });
+    await page.route("**/api/tasks", async (route) => {
+      await pendingSave;
+      if (outcome === "success") {
+        await route.continue();
+      } else {
+        await route.fulfill({
+          status: 503,
+          contentType: "application/problem+json",
+          body: JSON.stringify({ detail: "Unable to save right now." }),
+        });
+      }
+    });
+
+    await page.getByLabel("What needs doing?").fill("Pending task");
+    await page.getByLabel("Notes (optional)").fill("Keep these notes");
+    await page.getByLabel("Priority", { exact: true }).selectOption("High");
+    await page.getByLabel("Due date", { exact: true }).fill("2028-02-01");
+    await page.getByLabel("Repeat").selectOption("Weekly");
+    const fields = page.locator("#task-form input, #task-form textarea, #task-form select");
+
+    try {
+      await Promise.all([
+        page.waitForRequest((request) =>
+          request.method() === "POST" && request.url().endsWith("/api/tasks")),
+        page.getByRole("button", { name: "+ Add task" }).click(),
+      ]);
+      for (const field of await fields.all())
+        await expect(field).toBeDisabled();
+      await expect(page.getByRole("button", { name: "+ Add task" })).toBeDisabled();
+    } finally {
+      releaseSave();
+      await page.unrouteAll({ behavior: "wait" });
+    }
+
+    await expect(page.getByRole("button", { name: "+ Add task" })).toBeEnabled();
+    for (const field of await fields.all())
+      await expect(field).toBeEnabled();
+
+    if (outcome === "success") {
+      await expect(page.locator(".task-card")).toContainText("Pending task");
+      await expect(page.getByLabel("What needs doing?")).toHaveValue("");
+      await expect(page.getByLabel("What needs doing?")).toBeFocused();
+    } else {
+      await expect(page.getByRole("alert")).toContainText("Unable to save right now.");
+      await expect(page.getByLabel("What needs doing?")).toHaveValue("Pending task");
+      await expect(page.getByLabel("Notes (optional)")).toHaveValue("Keep these notes");
+      await expect(page.getByLabel("Priority", { exact: true })).toHaveValue("High");
+      await expect(page.getByLabel("Due date", { exact: true })).toHaveValue("2028-02-01");
+      await expect(page.getByLabel("Repeat")).toHaveValue("Weekly");
+      await page.getByRole("button", { name: "+ Add task" }).click();
+      await expect(page.locator(".task-card")).toContainText("Pending task");
+    }
+  });
+}
+
 test("canceling deletion keeps the task", async ({ page }) => {
   await page.getByLabel("What needs doing?").fill("Keep this task");
   await page.getByRole("button", { name: "+ Add task" }).click();
@@ -185,10 +244,11 @@ test("shows overdue counts and date labels against the browser's local date", as
     { title: "Tomorrow", dueDate: "2028-02-02" },
     { title: "Completed overdue", dueDate: "2028-01-30" },
   ];
-  for (const entry of entries) {
+  for (const [index, entry] of entries.entries()) {
     await page.getByLabel("What needs doing?").fill(entry.title);
     await page.getByLabel("Due date", { exact: true }).fill(entry.dueDate);
     await page.getByRole("button", { name: "+ Add task" }).click();
+    await expect(page.locator(".task-card")).toHaveCount(index + 1);
   }
 
   await page.getByRole("checkbox", { name: 'Mark "Completed overdue" complete' }).click();

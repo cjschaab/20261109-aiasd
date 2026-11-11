@@ -40,6 +40,16 @@ revisions:
     date: "2026-11-11"
     change: "Document automated test checks."
     ai_log: "ai-logs/2026/11/11/test-workflow-20261111/conversation.md"
+  - chat_id: "tdd-instructions-20261111"
+    model: "unknown/unknown@unknown"
+    date: "2026-11-11"
+    change: "Add test-driven development instructions."
+    ai_log: "ai-logs/2026/11/11/tdd-instructions-20261111/conversation.md"
+  - chat_id: "fix-pending-save-race-20261111"
+    model: "OpenAI/gpt-6.1-sol@unknown"
+    date: "2026-11-11"
+    change: "Document pending-save form locking and deterministic browser regression coverage."
+    ai_log: "ai-logs/2026/11/11/fix-pending-save-race-20261111/conversation.md"
 ---
 
 # Daybook
@@ -56,6 +66,10 @@ SQLite database. The UI provides task counts, search, status filters, sorting,
 editing, and confirmation before deletion. API input is validated and invalid
 requests return Problem Details. Responses include a Content Security Policy and
 `X-Content-Type-Options: nosniff`; priority and recurrence values use JSON strings.
+
+While a request is pending, the editor fields and task action controls are
+disabled. A successful save clears the form and returns focus to the title;
+a failed save preserves the entered values and re-enables the form for retry.
 
 The app does not currently include authentication, multi-instance storage,
 real-time updates between browsers, or background task scheduling. Changes from
@@ -107,6 +121,9 @@ before any public hosting. No Azure resources are required or provisioned.
 
 ## Test
 
+For behavior changes and bug fixes, follow the
+[Test-Driven Development instructions](.github/instructions/test-driven-development.instructions.md).
+
 ```powershell
 dotnet test .\tests\TodoManager.Tests
 ```
@@ -136,6 +153,12 @@ npm test
 
 The Playwright web server uses an isolated temporary SQLite database. Browser
 tests run serially because they share that test server.
+
+The [browser regression tests](tests/browser/tasks.spec.ts) hold save responses
+open to verify form locking and recovery after success or failure. Multi-task
+setup waits for each new card before entering the next task. The
+[TDD verification record](ai-logs/2026/11/11/fix-pending-save-race-20261111/summary.md)
+records the failing tests and five consecutive passing suite runs.
 
 The [Tests workflow](.github/workflows/tests.yml) runs both suites on every
 push and pull request. Push a branch and check the results before opening a PR;
