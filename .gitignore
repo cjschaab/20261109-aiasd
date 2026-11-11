@@ -2,4 +2,7 @@
 **/obj/
 **/App_Data/
 **/TestResults/
+**/node_modules/
+**/playwright-report/
+**/test-results/
 .vs/
