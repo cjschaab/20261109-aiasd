@@ -23,7 +23,7 @@ Bring the root README in line with the current implementation.
 
 ## Completed
 
-- [README](../../../../README.md) - documented the current app capabilities,
+- [README](../../../../../README.md) - documented the current app capabilities,
   architectural scope, unsupported deployment features, migration fields, API
   behavior, and integration test coverage.
 

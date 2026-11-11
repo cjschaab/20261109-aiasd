@@ -4,16 +4,27 @@ model: "unknown/unknown@unknown"
 operator: "jMM-at-CODETraining"
 chat_id: "add-review-solid-20261110"
 prompt: |
-  update the readme file with the current state of the project
-started: "2026-11-10T12:06:08.0739525-08:00"
-ended: "2026-11-10T12:06:42.3542839-08:00"
+  /skill add
+  skill=review the codebase for SOLID violations, scope=This repository
+started: "2026-11-10T11:52:09.5997879-08:00"
+ended: "2026-11-10T11:52:25.4054404-08:00"
 task_durations:
-  - task: "Review implementation and update project README"
-    duration: "00:00:34"
-total_duration: "00:00:34"
-ai_log: "ai-logs/2026/11/10/update-readme-current-state-20261110/conversation.md"
+  - task: "Design repository-local SOLID review workflow"
+    duration: "00:00:15"
+total_duration: "00:00:15"
+ai_log: "ai-logs/2026/11/10/add-review-solid-20261110/conversation.md"
 source: "user"
 revisions:
+  - chat_id: "testability-recommendations-20261110"
+    model: "unknown/unknown@unknown"
+    date: "2026-11-10"
+    change: "Link the testability recommendations."
+    ai_log: "ai-logs/2026/11/10/testability-recommendations-20261110/conversation.md"
+  - chat_id: "update-readme-current-state-20261110"
+    model: "unknown/unknown@unknown"
+    date: "2026-11-10"
+    change: "Document current app capabilities, security headers, limits, migrations, API behavior, and test coverage."
+    ai_log: "ai-logs/2026/11/10/update-readme-current-state-20261110/conversation.md"
   - chat_id: "add-review-solid-20261110"
     model: "unknown/unknown@unknown"
     date: "2026-11-10"
@@ -38,7 +49,8 @@ Daybook is a working, single-server task manager. The ASP.NET Core minimal API
 serves both the JSON task API and the browser UI; task data is persisted in one
 SQLite database. The UI provides task counts, search, status filters, sorting,
 editing, and confirmation before deletion. API input is validated and invalid
-requests return Problem Details. Priority and recurrence values use JSON strings.
+requests return Problem Details. Responses include a Content Security Policy and
+`X-Content-Type-Options: nosniff`; priority and recurrence values use JSON strings.
 
 The app does not currently include authentication, multi-instance storage,
 real-time updates between browsers, or background task scheduling. Changes from
@@ -99,6 +111,22 @@ CRUD, validation, persistence across host restarts, serving browser assets,
 OpenAPI operations, recurring task dates and month-end clamping, duplicate and
 concurrent completion, transaction rollback when successor creation fails, and
 upgrading a legacy database.
+
+Browser tests exercise the rendered UI and its interactions against the real app:
+
+```powershell
+cd .\tests\browser
+npm install
+npx playwright install chromium
+npm test
+```
+
+The Playwright web server uses an isolated temporary SQLite database. Browser
+tests run serially because they share that test server.
+
+See [Testability Recommendations](src/TodoManager/docs/testability-recommendations.md)
+for prioritized improvements to test seams, deterministic time, assertions, and
+test-resource isolation.
 
 ## API
 
