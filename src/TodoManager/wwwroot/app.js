@@ -1,11 +1,16 @@
 "use strict";
 
+import { isOverdue, selectVisibleTasks } from "./task-list.mjs";
+
 const byId = (id) => document.getElementById(id);
 let tasks = [];
 let filter = "all";
 let editingId = null;
 let busy = false;
 let loaded = false;
+let loginEnabled = true;
+let csrfToken = null;
+let authBusy = false;
 
 function showError(error) {
   byId("error").textContent = error.message;
@@ -13,11 +18,24 @@ function showError(error) {
 }
 
 async function request(path = "", options = {}) {
-  const response = await fetch(`/api/tasks${path}`, {
+  return apiRequest(`/api/tasks${path}`, options, true);
+}
+
+async function apiRequest(url, options = {}, taskRequest = false) {
+  const response = await fetch(url, {
     ...options,
-    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+    headers: {
+      "Content-Type": "application/json",
+      ...(csrfToken ? { "X-CSRF-TOKEN": csrfToken } : {}),
+      ...options.headers,
+    },
   });
   if (!response.ok) {
+    if ((taskRequest || url === "/api/auth/logout") && response.status === 401 && loginEnabled) {
+      showSignedOut();
+      throw new Error("Your session has ended. Please sign in again.");
+    }
     const body = await response.text();
     let problem;
     try { problem = JSON.parse(body); } catch { /* Non-JSON errors use the status below. */ }
@@ -32,10 +50,6 @@ function today() {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-function overdue(task) {
-  return !task.isCompleted && task.dueDate && task.dueDate < today();
-}
-
 function element(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
@@ -44,23 +58,19 @@ function element(tag, className, text) {
 }
 
 function render() {
+  byId("sign-out").disabled = busy || authBusy;
+  const currentDate = today();
   const completed = tasks.filter((task) => task.isCompleted).length;
   byId("active-count").textContent = tasks.length - completed;
   byId("completed-count").textContent = completed;
-  byId("overdue-count").textContent = tasks.filter(overdue).length;
-  const query = byId("search").value.trim().toLocaleLowerCase();
-  const visible = tasks.filter((task) =>
-    (filter === "all" || (filter === "completed" ? task.isCompleted : !task.isCompleted)) &&
-    `${task.title} ${task.notes}`.toLocaleLowerCase().includes(query));
-  const ranks = { High: 0, Medium: 1, Low: 2 };
-  visible.sort((a, b) => {
-    if (byId("sort").value === "due")
-      return (a.dueDate || "9999-12-31").localeCompare(b.dueDate || "9999-12-31") || b.id - a.id;
-    if (byId("sort").value === "priority") return ranks[a.priority] - ranks[b.priority] || b.id - a.id;
-    return b.id - a.id;
+  byId("overdue-count").textContent = tasks.filter((task) => isOverdue(task, currentDate)).length;
+  const visible = selectVisibleTasks(tasks, {
+    filter,
+    query: byId("search").value,
+    sort: byId("sort").value,
   });
   byId("visible-count").textContent = visible.length;
-  byId("tasks").replaceChildren(...visible.map(taskCard));
+  byId("tasks").replaceChildren(...visible.map((task) => taskCard(task, currentDate)));
   byId("empty").hidden = !loaded || visible.length > 0;
   byId("empty-title").textContent = tasks.length ? "Nothing here. A little breathing room." : "A fresh start.";
   byId("empty-message").textContent = tasks.length ? "Try another filter or search, or add a new task." : "Add your first task and make a little progress today.";
@@ -71,7 +81,7 @@ function render() {
   });
 }
 
-function taskCard(task) {
+function taskCard(task, currentDate) {
   const card = element("li", `task-card${task.isCompleted ? " completed" : ""}`);
   const checkbox = element("input", "task-check");
   checkbox.type = "checkbox";
@@ -96,7 +106,8 @@ function taskCard(task) {
   if (task.dueDate) {
     const date = new Date(`${task.dueDate}T00:00:00`);
     const formatted = date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-    const due = element("time", `due${overdue(task) ? " overdue" : ""}`, `${overdue(task) ? "Overdue / " : "Due "}${formatted}`);
+    const taskIsOverdue = isOverdue(task, currentDate);
+    const due = element("time", `due${taskIsOverdue ? " overdue" : ""}`, `${taskIsOverdue ? "Overdue / " : "Due "}${formatted}`);
     due.dateTime = task.dueDate;
     meta.append(due);
   }
@@ -206,4 +217,80 @@ byId("search").addEventListener("input", render);
 byId("sort").addEventListener("change", render);
 document.querySelectorAll("[data-filter]").forEach((button) =>
   button.addEventListener("click", () => { filter = button.dataset.filter; render(); }));
-load();
+
+function showSignedOut() {
+  tasks = [];
+  loaded = false;
+  csrfToken = null;
+  filter = "all";
+  byId("search").value = "";
+  resetForm();
+  render();
+  byId("workspace-content").hidden = true;
+  byId("account-controls").hidden = true;
+  byId("current-user").textContent = "";
+  byId("login-panel").hidden = false;
+  byId("password").value = "";
+  byId("username").focus();
+}
+
+async function readSession() {
+  const session = await apiRequest("/api/auth/session");
+  loginEnabled = session.loginEnabled;
+  csrfToken = session.csrfToken;
+  byId("login-panel").hidden = !loginEnabled || session.isAuthenticated;
+  byId("workspace-content").hidden = loginEnabled && !session.isAuthenticated;
+  byId("account-controls").hidden = !loginEnabled || !session.isAuthenticated;
+  byId("current-user").textContent = session.userName || "";
+  return session;
+}
+
+async function authAction(action) {
+  if (authBusy || busy) return;
+  authBusy = true;
+  byId("error").hidden = true;
+  document.querySelectorAll("#login-form input, #login-form button, #auth-retry, #sign-out")
+    .forEach(control => { control.disabled = true; });
+  try { await action(); } catch (error) { showError(error); }
+  finally {
+    authBusy = false;
+    document.querySelectorAll("#login-form input, #login-form button, #auth-retry, #sign-out")
+      .forEach(control => { control.disabled = false; });
+    byId("password").value = "";
+  }
+}
+
+async function initializeAuth() {
+  await authAction(async () => {
+    byId("auth-loading").hidden = false;
+    byId("auth-retry").hidden = true;
+    try {
+      const session = await readSession();
+      if (!session.loginEnabled || session.isAuthenticated) await load();
+      else byId("username").focus();
+    } catch (error) {
+      byId("workspace-content").hidden = true;
+      byId("auth-retry").hidden = false;
+      throw error;
+    } finally { byId("auth-loading").hidden = true; }
+  });
+}
+
+byId("login-form").addEventListener("submit", event => {
+  event.preventDefault();
+  const credentials = { userName: byId("username").value.trim(), password: byId("password").value };
+  authAction(async () => {
+    await readSession();
+    await apiRequest("/api/auth/login", { method: "POST", body: JSON.stringify(credentials) });
+    await readSession();
+    await load();
+    byId("title").focus();
+  });
+});
+byId("sign-out").addEventListener("click", () => authAction(async () => {
+  await apiRequest("/api/auth/logout", { method: "POST" });
+  showSignedOut();
+  announce("Signed out.");
+}));
+byId("auth-retry").addEventListener("click", initializeAuth);
+initializeAuth();

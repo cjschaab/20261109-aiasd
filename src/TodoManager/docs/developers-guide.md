@@ -1,3 +1,31 @@
+---
+ai_generated: true
+model: "OpenAI/gpt-6.1-sol@unknown"
+operator: "jMM-at-CODETraining"
+chat_id: "identity-cookie-configuration-20261111"
+prompt: |
+  go ahead with step 3 using tdd
+started: "2026-11-11T11:25:11.1718321-08:00"
+ended: "2026-11-11T11:31:01.7002632-08:00"
+task_durations:
+  - task: "Test and configure Identity services and cookie middleware; document and verify"
+    duration: "00:05:50"
+total_duration: "00:05:50"
+ai_log: "ai-logs/2026/11/11/identity-cookie-configuration-20261111/conversation.md"
+source: "user"
+revisions:
+  - chat_id: "flagged-login-flow-20261111"
+    model: "OpenAI/gpt-6.1-sol@unknown"
+    date: "2026-11-11"
+    change: "Document real login endpoints, CSRF, default-on flag, migrations, and initial provisioning."
+    ai_log: "ai-logs/2026/11/11/flagged-login-flow-20261111/conversation.md"
+  - chat_id: "implement-feature-flags-appsettings-20261111"
+    model: "OpenAI/gpt-6.1-sol@unknown"
+    date: "2026-11-11"
+    change: "Document flag configuration, dependency injection, runtime JSON reload, and testing."
+    ai_log: "ai-logs/2026/11/11/implement-feature-flags-appsettings-20261111/conversation.md"
+---
+
 # Daybook Developer Guide
 
 This guide covers running and testing Daybook, its implementation layout and
@@ -16,6 +44,10 @@ From the repository root, start the app with:
 dotnet run --project .\src\TodoManager
 ```
 
+For the first run, follow [initial-account provisioning](../../../README.md#run)
+to supply bootstrap credentials securely. Login is on by default and startup
+fails explicitly if the empty Identity database cannot be provisioned.
+
 The development launch profile listens at `http://localhost:5050`. Open that
 address to use the browser UI. The app serves both the UI and the JSON API.
 
@@ -31,12 +63,16 @@ persistence, browser assets, OpenAPI, recurring tasks, and database upgrades.
 ## Project layout
 
 - `Program.cs` configures dependency injection, JSON enum serialization,
-  validation, OpenAPI, static files, and database initialization.
+  validation, OpenAPI, static files, task database initialization, and Identity
+  cookie authentication/authorization middleware.
+- [ApplicationUser.cs](../ApplicationUser.cs) uses Identity's standard user fields.
+- [ApplicationDbContext.cs](../ApplicationDbContext.cs) contains Identity's EF Core model.
 - `TaskEndpoints.cs` maps the HTTP routes under `/api/tasks`.
 - `TaskContracts.cs` defines request and response models, priority and
   recurrence enums, and request validation attributes.
 - `TaskService.cs` implements task CRUD and recurring-task generation.
 - `TaskDatabase.cs` opens SQLite connections and creates or upgrades the schema.
+- `FeatureFlags.cs` exposes named configuration-backed feature flags through DI.
 - `wwwroot/` contains the browser UI assets.
 - `TodoManager.http` contains example API requests.
 
@@ -144,8 +180,72 @@ Use an absolute path outside the public web root.
 
 The schema is initialized automatically when the app starts. Existing databases
 are upgraded in place, retaining task data. The application uses SQLite and is
-designed for a single server; it does not provide multi-instance storage,
-authentication, or real-time browser synchronization.
+designed for a single server; it does not provide multi-instance storage or
+real-time browser synchronization. Authenticated users share all tasks.
+
+### Feature flags
+
+`IFeatureFlags` is registered as a singleton and reads named booleans from the
+`FeatureFlags` section in `appsettings.json`. Add a key such as
+`"NewTaskFlow": true`, then inject `IFeatureFlags` and call
+`IsEnabled("NewTaskFlow")` at the code path that implements that feature.
+Missing flags are disabled. JSON appsettings changes are reloaded at runtime;
+environment variables use double underscores, for example
+`FeatureFlags__NewTaskFlow=true`. The Login flag defaults to true and is
+snapshotted at startup. Set `FeatureFlags__Login=false` and restart to explicitly
+restore the anonymous shared app; this disables login/logout, task authorization,
+CSRF requirements, and Identity initialization. Do not disable it for public
+hosting. Other callers of IFeatureFlags continue to read live configuration.
+
+### Identity and cookie configuration
+
+Identity uses a separate SQLite database, defaulting to `App_Data/identity.db`
+under the application content root. Override it with `IdentityDatabase__Path` or
+`IdentityDatabase:Path`. Use an absolute path outside the public web root, keep
+it separate from the task database. With login enabled,
+[IdentityInitialization](../IdentityInitialization.cs) creates the directory and
+applies EF Core migrations, then provisions the first user if no users exist.
+Set IdentityBootstrap:UserName and IdentityBootstrap:Password only through secure
+configuration for the initial run. Missing credentials and password-policy
+failures stop startup. Existing users are never reset by bootstrap settings.
+
+User, role, and sign-in managers are available through scoped dependency
+injection. Identity's application cookie is the default authentication/challenge
+scheme. The `Daybook.Identity` cookie is HTTP-only, `SameSite=Lax`, path `/`,
+with a 30-minute ticket lifetime and sliding renewal. Production and other
+non-Development environments require Secure cookies; Development uses Secure
+when the request is HTTPS and permits HTTP for localhost development.
+Nonpersistent sign-ins produce browser-session cookies; ticket expiry still
+applies independently.
+
+Authentication precedes authorization after routing. There is no fallback
+authorization policy. Task routes require authorization when Login is enabled;
+static assets remain public.
+Protected `/api` requests receive 401 or 403 without redirects. Browser challenges
+redirect to `/login` or `/access-denied`, which are reserved paths without pages
+yet; the app's sign-in form is served at `/`. Password login counts failures,
+locking an account after five failures for 15 minutes. A per-remote-IP limiter
+allows ten login attempts per minute. Configure trusted forwarding if deploying
+behind a reverse proxy.
+
+[AuthEndpoints](../AuthEndpoints.cs) exposes GET /api/auth/session and POST
+/api/auth/login and /api/auth/logout. Credentials use username/password JSON;
+invalid, unknown, and locked-out accounts get the same generic 401. The session
+response includes loginEnabled, isAuthenticated, userName, and csrfToken. Fetch
+again after login to get a token bound to the signed-in user. Send X-CSRF-TOKEN
+and retain cookies for login, logout, and all task writes. Verification failures
+return a 400 Problem Details response. API responses are marked no-store. There
+is no registration, password-recovery, or MFA flow.
+
+[Configuration tests](../../../tests/TodoManager.Tests/IdentityConfigurationTests.cs)
+exercise the registrations, paths, schemes, and lockout settings.
+[Cookie tests](../../../tests/TodoManager.Tests/IdentityCookieTests.cs) seed users
+only in isolated test databases and add endpoints only to the test host. They
+use a controlled clock to exercise expiry and renewal without sleeps. These
+tests isolate cookie infrastructure from password login.
+[LoginFlowTests](../../../tests/TodoManager.Tests/LoginFlowTests.cs) cover the real
+endpoints, flag modes, CSRF route variants, migrations, bootstrap, lockout, rate
+limits, and shared access. Existing regression fixtures explicitly disable Login.
 
 ## Recurring tasks
 
@@ -279,7 +379,9 @@ examples are in [`TodoManager.http`](../TodoManager.http).
 
 ## Deployment and security notes
 
-The default development listener is localhost-only. There is no authentication:
-anyone who can reach the app can view and change all tasks. Do not expose it to
-the public internet. Before hosting it publicly, add authentication and HTTPS,
-and review the deployment and database backup approach for your environment.
+The default development listener is localhost-only. Login is enabled by default;
+disabling it allows anyone who can reach the app to change every task. For
+network deployment, require HTTPS and protect/persist Data Protection keys.
+Sign-out clears a browser cookie rather than revoking every session. Review
+backup and secret-management practices before hosting publicly. The automatic
+migration/provisioning path targets this app's single-server deployment.
