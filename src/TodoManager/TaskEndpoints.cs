@@ -4,9 +4,11 @@ namespace TodoManager;
 
 public static class TaskEndpoints
 {
-    public static void MapTasks(this WebApplication app)
+    public static void MapTasks(this WebApplication app, bool loginEnabled)
     {
         var group = app.MapGroup("/api/tasks").WithTags("Tasks");
+        if (loginEnabled)
+            group.RequireAuthorization();
         group.MapGet("/", async (ITaskService service, CancellationToken ct) =>
             TypedResults.Ok(await service.GetAllAsync(ct)))
             .WithName("ListTasks").WithSummary("List all shared tasks.");

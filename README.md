@@ -50,6 +50,31 @@ revisions:
     date: "2026-11-11"
     change: "Document pending-save form locking and deterministic browser regression coverage."
     ai_log: "ai-logs/2026/11/11/fix-pending-save-race-20261111/conversation.md"
+  - chat_id: "identity-context-20261111"
+    model: "OpenAI/gpt-6.1-sol@unknown"
+    date: "2026-11-11"
+    change: "Document the Identity user model, database context, and isolated SQLite tests."
+    ai_log: "ai-logs/2026/11/11/identity-context-20261111/conversation.md"
+  - chat_id: "identity-cookie-configuration-20261111"
+    model: "OpenAI/gpt-6.1-sol@unknown"
+    date: "2026-11-11"
+    change: "Document registered Identity services, cookie policy, test coverage, and deferred access control."
+    ai_log: "ai-logs/2026/11/11/identity-cookie-configuration-20261111/conversation.md"
+  - chat_id: "implement-feature-flags-appsettings-20261111"
+    model: "OpenAI/gpt-6.1-sol@unknown"
+    date: "2026-11-11"
+    change: "Document appsettings-backed feature flags, defaults, reload behavior, and server-side checks."
+    ai_log: "ai-logs/2026/11/11/implement-feature-flags-appsettings-20261111/conversation.md"
+  - chat_id: "flagged-login-flow-20261111"
+    model: "OpenAI/gpt-6.1-sol@unknown"
+    date: "2026-11-11"
+    change: "Document default-on shared login, CSRF, migrations, bootstrap, flag opt-out, and verified tests."
+    ai_log: "ai-logs/2026/11/11/flagged-login-flow-20261111/conversation.md"
+  - chat_id: "refactoring-finding-issues-20261112"
+    model: "OpenAI/unknown@unknown"
+    date: "2026-11-12"
+    change: "Link the local issue index for refactoring and instruction-audit findings."
+    ai_log: "ai-logs/2026/11/12/refactoring-finding-issues-20261112/conversation.md"
 ---
 
 # Daybook
@@ -71,10 +96,95 @@ While a request is pending, the editor fields and task action controls are
 disabled. A successful save clears the form and returns focus to the title;
 a failed save preserves the entered values and re-enables the form for retry.
 
-The app does not currently include authentication, multi-instance storage,
-real-time updates between browsers, or background task scheduling. Changes from
-another browser appear after Refresh. Concurrent edits replace the whole task,
-so the last save wins.
+Login is enabled by default. All signed-in users share the same task list; there
+is no per-user ownership. The app does not provide multi-instance storage,
+real-time updates, or background scheduling. Changes from another browser appear
+after Refresh. Concurrent edits replace the whole task, so the last save wins.
+
+### Identity storage foundation
+
+[ApplicationUser](src/TodoManager/ApplicationUser.cs) inherits Identity's standard
+user fields. [ApplicationDbContext](src/TodoManager/ApplicationDbContext.cs)
+inherits `IdentityDbContext<ApplicationUser>` and accepts externally configured
+EF Core options without hardcoding a database path or modifying Identity's model.
+The intended deployment uses a separate Identity SQLite database so EF Core
+migrations do not manage the existing task schema.
+
+Identity services and cookie authentication middleware are registered in
+[Program.cs](src/TodoManager/Program.cs), including user, role, and sign-in managers.
+The Identity SQLite path defaults to `App_Data/identity.db` under the application's
+content root. Override it with `IdentityDatabase__Path` (or `IdentityDatabase:Path`
+in configuration), using an absolute path outside the public web root, separate
+from task storage. When login is enabled, startup creates the containing directory
+and applies the [Identity migrations](src/TodoManager/Migrations). It never
+migrates task data into Identity or changes task ownership.
+
+The `Daybook.Identity` cookie is HTTP-only, uses `SameSite=Lax` and path `/`,
+and has a 30-minute ticket lifetime with sliding renewal. It is Secure-only
+outside Development; Development permits HTTP for the existing localhost launch
+profile. Requests to `/api` endpoints receive 401/403 rather than authentication
+redirects. The browser UI at `/` shows the login form when signed out; it checks
+session state before showing tasks and clears visible task data after sign-out
+or an expired-session response. Passwords are never stored in browser storage.
+New users are locked out after five failed password attempts for 15 minutes.
+Login is additionally limited to ten requests per minute per remote IP.
+
+[AuthEndpoints](src/TodoManager/AuthEndpoints.cs) exposes:
+
+| Method | Route | Behavior |
+|---|---|---|
+| GET | `/api/auth/session` | Flag state, current username, and CSRF request token; never cached |
+| POST | `/api/auth/login` | Username/password JSON; nonpersistent cookie, or generic 401 |
+| POST | `/api/auth/logout` | Authenticated sign-out; clears the browser cookie |
+
+With login enabled, every task API operation requires authentication. Login,
+logout, and task writes require the session's `X-CSRF-TOKEN` header plus its
+antiforgery cookie. Fetch a fresh session token after login because tokens are
+bound to the authenticated identity. Invalid verification returns Problem Details
+with status 400. Public static assets contain no task data and remain anonymous.
+Responses from the enabled API use `Cache-Control: no-store`.
+
+There is no self-registration, password recovery, account-management UI, or MFA
+flow. Sign-out clears this browser's cookie, not all sessions or copied cookies.
+Production hosting must provide HTTPS and persistent, protected ASP.NET Core
+Data Protection keys; configure trusted proxy forwarding before relying on
+client-IP rate limits behind a proxy.
+The [context tests](tests/TodoManager.Tests/ApplicationDbContextTests.cs) use a
+separate open in-memory SQLite connection per test to verify provider selection,
+Identity table creation, user persistence, unique normalized usernames,
+user-role membership, and missing-user lookup. They use `EnsureCreatedAsync()`
+only for isolated test schemas, not production migrations. The
+[verification record](ai-logs/2026/11/11/identity-context-20261111/summary.md)
+records the test-first results and scope.
+The [configuration tests](tests/TodoManager.Tests/IdentityConfigurationTests.cs)
+verify services, default schemes, storage paths, lockout settings, and startup
+without Identity schema creation. The
+[cookie tests](tests/TodoManager.Tests/IdentityCookieTests.cs) use test-only
+endpoints, isolated databases, and a controllable clock for flags, authentication,
+API challenges, expiry, renewal, and sign-out. See the
+[cookie configuration verification record](ai-logs/2026/11/11/identity-cookie-configuration-20261111/summary.md).
+The [login API tests](tests/TodoManager.Tests/LoginFlowTests.cs) and
+[login browser tests](tests/browser/login.spec.ts) verify the real flow, both flag
+states, CSRF defenses, shared access, lockout, rate limiting, migrations, initial
+provisioning, expired sessions, and error recovery.
+
+## Feature flags
+
+The app registers `IFeatureFlags` for checking named boolean flags from the
+`FeatureFlags` section of [appsettings.json](src/TodoManager/appsettings.json).
+For example, add `"NewTaskFlow": true` inside that section, then inject
+`IFeatureFlags` and call `IsEnabled("NewTaskFlow")` where the feature behavior
+is implemented. Missing flags are disabled. Configuration changes are read
+through the active .NET configuration providers; appsettings changes reload
+while the app is running, and environment variables can override settings with
+names such as `FeatureFlags__NewTaskFlow`.
+
+`Login` defaults to `true`. Explicitly set `FeatureFlags__Login=false` to restore
+the anonymous shared app: task operations no longer require login or CSRF tokens,
+login/logout endpoints are unavailable, and Identity migrations/provisioning are
+skipped. **Disabling this flag removes task access controls.** Use it only on a
+trusted local system. Unlike ordinary dynamically read flags, Login is read once
+at startup; restart after changing it so UI state and server authorization agree.
 
 ## Recurring tasks
 
@@ -95,11 +205,28 @@ to no recurrence.
 
 ## Run
 
-Install the .NET 10 SDK, then from the repository root:
+Install the .NET 10 SDK. On the first run, supply an initial username and strong
+password through a secret provider or environment variables. For local PowerShell
+development, prompt for the credentials instead of putting a password in history:
 
 ```powershell
-dotnet run --project .\src\TodoManager
+$credential = Get-Credential -Message "Create the first Daybook account"
+$env:IdentityBootstrap__UserName = $credential.UserName
+$env:IdentityBootstrap__Password = $credential.GetNetworkCredential().Password
+try {
+    dotnet run --project .\src\TodoManager
+} finally {
+    Remove-Item Env:\IdentityBootstrap__UserName
+    Remove-Item Env:\IdentityBootstrap__Password
+}
 ```
+
+The [initializer](src/TodoManager/IdentityInitialization.cs) provisions one
+ordinary account only when the Identity database has no users. Missing credentials
+or an invalid password cause explicit startup failure. Once provisioned, remove
+the bootstrap settings from your deployment; restarting never resets an existing
+password or creates additional accounts from changed bootstrap settings. Later
+runs use the normal `dotnet run --project .\src\TodoManager` command.
 
 Open http://localhost:5050. Tasks persist across restarts in
 `src\TodoManager\App_Data\tasks.db`; the database starts empty.
@@ -107,17 +234,18 @@ All browsers connecting to the same server share the same list. Use Refresh to
 load changes made on another device; updates are not pushed automatically.
 Editing saves the entire task, so the last save wins when people edit concurrently.
 
-This app deliberately has **no authentication**. The default listener is
-localhost-only. To use it on a trusted network, bind explicitly:
+The default listener is localhost-only. To run without login for a trusted local
+demo, explicitly opt out before starting:
 
 ```powershell
-dotnet run --project .\src\TodoManager -- --urls http://0.0.0.0:5050
+$env:FeatureFlags__Login = "false"
+dotnet run --project .\src\TodoManager
 ```
 
-Browse to the server's LAN address on port 5050 from another device. Limit firewall
-access to your trusted network. Anyone who can reach the app can view and change
-every task. Do not expose it to the public internet; add authentication and HTTPS
-before any public hosting. No Azure resources are required or provisioned.
+Remove that environment override to restore login on the next start. Do not
+expose anonymous mode to the internet. Development HTTP is for local use only;
+credentials require HTTPS for any network deployment. No Azure resources are
+required or provisioned.
 
 ## Test
 
@@ -151,8 +279,11 @@ npx playwright install chromium
 npm test
 ```
 
-The Playwright web server uses an isolated temporary SQLite database. Browser
-tests run serially because they share that test server.
+Playwright starts two servers with separate temporary SQLite databases: anonymous
+mode on port 5200 and default-on login on port 5201. It generates an ephemeral
+bootstrap password at runtime. Browser tests run serially because each mode shares
+its server. Existing task API regression tests explicitly opt out of login;
+the login suite verifies authenticated operations separately.
 
 The [browser regression tests](tests/browser/tasks.spec.ts) hold save responses
 open to verify form locking and recovery after success or failure. Multi-task
@@ -169,6 +300,9 @@ as required status checks in GitHub branch protection or rulesets.
 See [Testability Recommendations](src/TodoManager/docs/testability-recommendations.md)
 for prioritized improvements to test seams, deterministic time, assertions, and
 test-resource isolation.
+
+See the [Refactoring Plan](src/TodoManager/docs/refactoring-plan.md) for
+evidence-backed hotspots and incremental refactoring proposals.
 
 ## API
 
@@ -201,6 +335,19 @@ automatic. This is a single-server app, not a multi-instance service.
 
 For setup, project structure, configuration, recurrence behavior, and a detailed
 endpoint and payload reference, see the [Developer Guide](src/TodoManager/docs/developers-guide.md).
+
+## Project requirements skill
+
+[Create Project Requirements](.github/skills/create-project-requirements/SKILL.md)
+creates or updates a Markdown requirements document covering project purpose,
+intended users, key workflows, business rules, tech stack, assumptions, and
+unanswered questions. Ask to "create project requirements" or "write a project
+requirements document" to use it.
+
+## Local issues
+
+The [local issue descriptions](issues/README.md) track actionable findings from
+the instruction-compliance audit and the refactoring plan.
 
 ## Review skill
 

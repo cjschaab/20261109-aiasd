@@ -134,13 +134,7 @@ public sealed class TaskService(TaskDatabase database, TimeProvider clock) : ITa
         if (generateNext)
         {
             var completedOn = DateOnly.FromDateTime(clock.GetLocalNow().DateTime);
-            var nextDueDate = request.Recurrence switch
-            {
-                TaskRecurrence.Daily => completedOn.AddDays(1),
-                TaskRecurrence.Weekly => completedOn.AddDays(7),
-                TaskRecurrence.Monthly => completedOn.AddMonths(1),
-                _ => throw new InvalidOperationException("Unsupported recurrence.")
-            };
+            var nextDueDate = TaskRecurrenceDateCalculator.GetNextDueDate(completedOn, request.Recurrence);
             await InsertAsync(connection, transaction, request with
             {
                 DueDate = nextDueDate,

@@ -6,27 +6,45 @@
   <meta name="theme-color" content="#264e45">
   <title>Daybook | Todo Manager</title>
   <link rel="stylesheet" href="/styles.css">
-  <script src="/app.js" defer></script>
+  <script src="/app.js" type="module"></script>
 </head>
 <body>
   <main class="shell">
     <header class="masthead">
       <a class="brand" href="/">daybook<span class="brand-dot">.</span></a>
       <span class="shared-label">YOUR SHARED WORKSPACE</span>
+      <div id="account-controls" hidden>
+        <span id="current-user"></span>
+        <button id="sign-out" class="text-button" type="button">Sign out</button>
+      </div>
     </header>
     <section class="intro">
       <p class="eyebrow">A LITTLE STRUCTURE. A LITTLE MORE SPACE.</p>
       <h1>Make room for<br>what matters.</h1>
       <p class="subtitle">One place for your plans, big and small. Take it one task at a time.</p>
     </section>
+    <div id="error" class="error" role="alert" hidden></div>
+    <p id="announcement" class="sr-only" role="status" aria-live="polite"></p>
+    <p id="auth-loading" role="status">Checking access...</p>
+    <button id="auth-retry" class="text-button" type="button" hidden>Retry connection</button>
+    <section id="login-panel" class="editor login-panel" aria-labelledby="login-heading" hidden>
+      <h2 id="login-heading">Sign in to Daybook</h2>
+      <p>All signed-in users share the same task list.</p>
+      <form id="login-form">
+        <label for="username">Username</label>
+        <input id="username" name="username" autocomplete="username" required maxlength="256">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required maxlength="1024">
+        <button id="sign-in" class="primary" type="submit">Sign in</button>
+      </form>
+    </section>
+    <div id="workspace-content" hidden>
     <section class="stats" aria-label="Task summary">
       <div><strong id="active-count">0</strong><span>TO DO</span></div>
       <div><strong id="completed-count">0</strong><span>COMPLETED</span></div>
       <div><strong id="overdue-count">0</strong><span>OVERDUE</span></div>
       <p>Small steps.<br><em>Real progress.</em></p>
     </section>
-    <div id="error" class="error" role="alert" hidden></div>
-    <p id="announcement" class="sr-only" role="status" aria-live="polite"></p>
     <div class="workspace">
       <section class="task-panel" aria-labelledby="task-heading">
         <div class="section-heading">
@@ -95,6 +113,7 @@
         </form>
         <p class="storage-note">Saved on your server.<br>One shared list, wherever you open it.</p>
       </aside>
+    </div>
     </div>
     <footer><span>A calmer way to get things done.</span><span>DAYBOOK / TODO MANAGER</span></footer>
   </main>

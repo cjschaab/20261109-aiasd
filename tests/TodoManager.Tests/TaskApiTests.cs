@@ -18,7 +18,8 @@ public sealed class TaskApiTests : IDisposable
     private WebApplicationFactory<Program> CreateApp() => new WebApplicationFactory<Program>()
         .WithWebHostBuilder(builder =>
         {
-            builder.UseSetting("TaskDatabase:Path", DatabasePath).UseEnvironment("Development");
+            builder.UseSetting("TaskDatabase:Path", DatabasePath).UseEnvironment("Development")
+                .UseSetting("FeatureFlags:Login", "false");
             builder.ConfigureServices(services => services.AddSingleton<TimeProvider>(new FixedClock()));
         });
 
@@ -51,7 +52,9 @@ public sealed class TaskApiTests : IDisposable
             Assert.Equal("Plan the week", task.GetProperty("title").GetString());
             Assert.Equal("First steps", task.GetProperty("notes").GetString());
             Assert.False(task.GetProperty("isCompleted").GetBoolean());
-            Assert.True(task.TryGetProperty("createdAt", out _));
+            Assert.Equal(
+                new DateTimeOffset(2028, 1, 31, 23, 30, 0, TimeSpan.Zero),
+                task.GetProperty("createdAt").GetDateTimeOffset());
         }
         using (var app = CreateApp())
         using (var client = app.CreateClient())
@@ -117,6 +120,22 @@ public sealed class TaskApiTests : IDisposable
             notes = new string('b', notesLength)
         });
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task MaximumLengthFieldsAreAccepted()
+    {
+        using var app = CreateApp();
+        using var client = app.CreateClient();
+        var title = new string('t', 200);
+        var notes = new string('n', 2000);
+
+        var response = await client.PostAsJsonAsync("/api/tasks", new { title, notes });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var task = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(title, task.GetProperty("title").GetString());
+        Assert.Equal(notes, task.GetProperty("notes").GetString());
     }
 
     [Fact]
@@ -364,7 +383,14 @@ public sealed class TaskApiTests : IDisposable
 
     public void Dispose()
     {
-        SqliteConnection.ClearAllPools();
+        using var applicationConnection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = DatabasePath,
+            ForeignKeys = true
+        }.ToString());
+        using var directConnection = new SqliteConnection($"Data Source={DatabasePath}");
+        SqliteConnection.ClearPool(applicationConnection);
+        SqliteConnection.ClearPool(directConnection);
         if (Directory.Exists(directory))
             Directory.Delete(directory, recursive: true);
     }

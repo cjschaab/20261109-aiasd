@@ -1,4 +1,23 @@
 @baseUrl = http://localhost:5050
+@csrfToken = {{authSession.response.body.$.csrfToken}}
+
+### Get session/token (run again after signing in; retain response cookies)
+# @name authSession
+GET {{baseUrl}}/api/auth/session
+
+### Sign in (supply these environment variables outside this file)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+X-CSRF-TOKEN: {{csrfToken}}
+
+{
+  "userName": "{{$processEnv DAYBOOK_USERNAME}}",
+  "password": "{{$processEnv DAYBOOK_PASSWORD}}"
+}
+
+### Sign out (use a refreshed authenticated-session token)
+POST {{baseUrl}}/api/auth/logout
+X-CSRF-TOKEN: {{csrfToken}}
 
 ### List tasks
 GET {{baseUrl}}/api/tasks
@@ -6,6 +25,7 @@ GET {{baseUrl}}/api/tasks
 ### Create a task
 POST {{baseUrl}}/api/tasks
 Content-Type: application/json
+X-CSRF-TOKEN: {{csrfToken}}
 
 {
   "title": "Plan the week",
@@ -21,6 +41,7 @@ GET {{baseUrl}}/api/tasks/1
 ### Edit and complete a task
 PUT {{baseUrl}}/api/tasks/1
 Content-Type: application/json
+X-CSRF-TOKEN: {{csrfToken}}
 
 {
   "title": "Plan the week",
@@ -32,6 +53,7 @@ Content-Type: application/json
 
 ### Delete a task
 DELETE {{baseUrl}}/api/tasks/1
+X-CSRF-TOKEN: {{csrfToken}}
 
 ### Missing task
 GET {{baseUrl}}/api/tasks/0
@@ -39,12 +61,14 @@ GET {{baseUrl}}/api/tasks/0
 ### Invalid title
 POST {{baseUrl}}/api/tasks
 Content-Type: application/json
+X-CSRF-TOKEN: {{csrfToken}}
 
 { "title": "   " }
 
 ### Create a recurring task (due date is optional)
 POST {{baseUrl}}/api/tasks
 Content-Type: application/json
+X-CSRF-TOKEN: {{csrfToken}}
 
 {
   "title": "Weekly review",
@@ -57,6 +81,7 @@ Content-Type: application/json
 # Creates the next occurrence due seven days after completion, in server time.
 PUT {{baseUrl}}/api/tasks/2
 Content-Type: application/json
+X-CSRF-TOKEN: {{csrfToken}}
 
 {
   "title": "Weekly review",

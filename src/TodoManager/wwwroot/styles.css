@@ -52,6 +52,8 @@ h2 { font-size: 20px; letter-spacing: -.5px; margin: 0; font-weight: 650; }
 .task-actions button { padding: 2px 3px; border: 0; background: transparent; color: #607466; font-size: 11px; }
 .task-actions .delete { color: #9c5645; }
 .editor { background: #fff; padding: 25px; border-radius: 10px; border: 1px solid var(--line); }
+.login-panel { max-width: 400px; margin: 30px auto; }
+#account-controls { display: flex; align-items: center; gap: 12px; }
 .editor .eyebrow { margin-top: 0; font-size: 9px; }
 .editor h2 { font-family: Georgia, serif; font-size: 27px; font-weight: 400; margin: 12px 0 25px; }
 label { display: block; font-size: 12px; font-weight: 600; }
