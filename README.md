@@ -75,6 +75,11 @@ revisions:
     date: "2026-11-12"
     change: "Link the local issue index for refactoring and instruction-audit findings."
     ai_log: "ai-logs/2026/11/12/refactoring-finding-issues-20261112/conversation.md"
+  - chat_id: "issue-004-tdd-security-guidance-20261112"
+    model: "unknown/unknown@unknown"
+    date: "2026-11-12"
+    change: "Add actionable security checks to the TDD instructions."
+    ai_log: "ai-logs/2026/11/12/issue-004-tdd-security-guidance-20261112/conversation.md"
 ---
 
 # Daybook
@@ -250,7 +255,8 @@ required or provisioned.
 ## Test
 
 For behavior changes and bug fixes, follow the
-[Test-Driven Development instructions](.github/instructions/test-driven-development.instructions.md).
+[Test-Driven Development instructions](.github/instructions/test-driven-development.instructions.md);
+see the [security-guidance update summary](ai-logs/2026/11/12/issue-004-tdd-security-guidance-20261112/summary.md).
 
 ```powershell
 dotnet test .\tests\TodoManager.Tests

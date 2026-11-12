@@ -1,27 +1,38 @@
 ---
 ai_generated: true
 model: "unknown/unknown@unknown"
-operator: "jMM-at-CODETraining"
-chat_id: "tdd-instructions-20261111"
+operator: "@cjschaab"
+chat_id: "issue-004-tdd-security-guidance-20261112"
 prompt: |
-  create an instruction file for test driven development
-started: "2026-11-11T09:18:04.952-08:00"
-ended: "2026-11-11T09:20:55.504-08:00"
+  implement plan
+started: "2026-11-12T20:41:58.665Z"
+ended: "2026-11-12T20:43:41Z"
 task_durations:
-  - task: "Review repository guidance and write TDD instructions"
-    duration: "00:02:50"
-total_duration: "00:02:50"
-ai_log: "ai-logs/2026/11/11/tdd-instructions-20261111/conversation.md"
+  - task: "Add security guidance to the TDD instructions"
+    duration: "00:01:42"
+total_duration: "00:01:42"
+ai_log: "ai-logs/2026/11/12/issue-004-tdd-security-guidance-20261112/conversation.md"
 source: "user"
 name: "test-driven-development"
 description: "Use when implementing behavior or fixing bugs with tests first. Covers the red-green-refactor cycle, test selection, deterministic tests, and verification."
 applyTo: ["**/*.cs", "**/*.js", "**/*.ts"]
-version: "1.0.0"
+version: "1.1.0"
 author: "jMM-at-CODETraining"
 tags: ["testing", "tdd", "quality"]
 owner: "Development Team"
-reviewedDate: "2026-11-11"
-nextReview: "2027-02-11"
+reviewedDate: "2026-11-12"
+nextReview: "2027-02-12"
+revisions:
+  - chat_id: "tdd-instructions-20261111"
+    model: "unknown/unknown@unknown"
+    date: "2026-11-11"
+    change: "Create test-driven development instructions."
+    ai_log: "ai-logs/2026/11/11/tdd-instructions-20261111/conversation.md"
+  - chat_id: "issue-004-tdd-security-guidance-20261112"
+    model: "unknown/unknown@unknown"
+    date: "2026-11-12"
+    change: "Add actionable security checks for behavior changes."
+    ai_log: "ai-logs/2026/11/12/issue-004-tdd-security-guidance-20261112/conversation.md"
 ---
 
 # Test-Driven Development Instructions
@@ -37,6 +48,7 @@ that passes, and a cleanup step that preserves the tested behavior.
 - [Red-Green-Refactor](#red-green-refactor)
 - [Test Design](#test-design)
 - [Test Selection and Verification](#test-selection-and-verification)
+- [Security Checks](#security-checks)
 - [When the Cycle Cannot Be Followed](#when-the-cycle-cannot-be-followed)
 - [Validation Checklist](#validation-checklist)
 
@@ -98,6 +110,22 @@ deliberate behavior change is part of the task.
   behavior. See [Testability Recommendations](../../src/TodoManager/docs/testability-recommendations.md)
   for repository-specific seams and time-control guidance.
 
+## Security Checks
+
+For behavior that handles untrusted input or security-sensitive data, include
+focused checks for the relevant security boundary:
+
+- Test that invalid or unexpected input is rejected or safely handled at the
+  boundary where it enters the system.
+- Test applicable authentication, authorization, and data-isolation behavior
+  when the change affects access or ownership.
+- Keep credentials and real sensitive data out of test fixtures, logs, and
+  failure output; use synthetic values and verify sensitive values are not
+  exposed where relevant.
+- Follow the canonical [Security and Compliance guidance](./instruction-files.instructions.md#security-and-compliance)
+  for applicable requirements. Do not copy unrelated security policy into tests
+  or this guide.
+
 ## When the Cycle Cannot Be Followed
 
 Do not fabricate a red result when a test cannot be run or reliably made to fail.
@@ -116,6 +144,8 @@ an assumption in the test.
 - [ ] Refactoring preserved behavior and focused tests still pass.
 - [ ] Tests cover relevant boundaries and failures with deterministic,
   isolated data.
+- [ ] Relevant input-validation and security-sensitive behavior is covered
+  without exposing credentials or sensitive data.
 - [ ] Relevant suites were run and their results are reported accurately.
 
 ## Summary
@@ -126,7 +156,7 @@ any justified deviation and validate the affected suites.
 
 ---
 
-**Document Version**: 1.0.0  
-**Last Updated**: 2026-11-11  
+**Document Version**: 1.1.0
+**Last Updated**: 2026-11-12
 **Maintainer**: Development Team  
 **Related Instructions**: [C# Development](./csharp-development.instructions.md), [AI-Assisted Output](./ai-assisted-output.instructions.md)
